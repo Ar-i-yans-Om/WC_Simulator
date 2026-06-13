@@ -1,0 +1,18 @@
+# Core orchestration
+langgraph>=0.2.50
+langchain-core>=0.3.0
+
+# Google Gen AI SDK (LLM agents + Google Search grounding)
+google-genai>=1.0.0
+
+# Schemas / validation
+pydantic>=2.7
+
+# Real public-data scrapers (optional structured path; web_search works without these)
+requests>=2.31
+pandas>=2.0          # used by the optional FBref scraper (pandas.read_html)
+lxml>=5.0            # html parser backend for pandas.read_html
+
+# Convenience
+python-dotenv>=1.0   # load GEMINI_API_KEY from a .env file
+streamlit
