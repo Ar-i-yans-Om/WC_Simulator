@@ -1,0 +1,438 @@
+{
+  "_instructions": "Fill in home_score and away_score as each match is played. Set played=true when the score is final. match_runner.py reads this file to compute group standings before each prediction.",
+  "last_updated": "2026-06-11",
+  "results": [
+    {
+      "id": "A1",
+      "home_score": 2,
+      "away_score": 0,
+      "played": false
+    },
+    {
+      "id": "A2",
+      "home_score": 2,
+      "away_score": 1,
+      "played": false
+    },
+    {
+      "id": "A3",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "A4",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "A5",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "A6",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "B1",
+      "home_score": 1,
+      "away_score": 1,
+      "played": false
+    },
+    {
+      "id": "B2",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "B3",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "B4",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "B5",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "B6",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "C1",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "C2",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "C3",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "C4",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "C5",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "C6",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "D1",
+      "home_score": 4,
+      "away_score": 1,
+      "played": false
+    },
+    {
+      "id": "D2",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "D3",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "D4",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "D5",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "D6",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "E1",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "E2",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "E3",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "E4",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "E5",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "E6",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "F1",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "F2",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "F3",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "F4",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "F5",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "F6",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "G1",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "G2",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "G3",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "G4",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "G5",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "G6",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "H1",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "H2",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "H3",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "H4",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "H5",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "H6",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "I1",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "I2",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "I3",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "I4",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "I5",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "I6",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "J1",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "J2",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "J3",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "J4",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "J5",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "J6",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "K1",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "K2",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "K3",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "K4",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "K5",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "K6",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "L1",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "L2",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "L3",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "L4",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "L5",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    },
+    {
+      "id": "L6",
+      "home_score": null,
+      "away_score": null,
+      "played": false
+    }
+  ]
+}

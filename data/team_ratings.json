@@ -1,0 +1,590 @@
+{
+  "elo_source": "World Football Rankings — worldfootballrankings.com.",
+  "fifa_source": "FIFA/Coca-Cola Men's World Ranking, 1 Apr 2026.",
+  "elo_scale_note": "FIFA-adopted Elo scale (top teams ~1800-1900).",
+  "fields": {
+    "elo": "Live ELO rating from worldfootballrankings.com",
+    "fifa_pts": "Official FIFA/Coca-Cola ranking points",
+    "fifa_rank": "Official FIFA rank as of 1 Apr 2026",
+    "confederation": "FIFA confederation",
+    "chaos_profile": "per-match black-swan propensities (weighted avg of last 25 matches): red_card / penalty_for / penalty_against / injury. TUNABLE placeholders — replace with real data. Used as RELATIVE weights; total chaos mass is set by settings.chaos_base_probability."
+  },
+  "teams": {
+    "Argentina": {
+      "elo": 1876.12,
+      "fifa_pts": 1874.81,
+      "fifa_rank": 3,
+      "confederation": "CONMEBOL",
+      "chaos_profile": {
+        "red_card": 0.14,
+        "penalty_for": 0.22,
+        "penalty_against": 0.15,
+        "injury": 0.07
+      }
+    },
+    "Spain": {
+      "elo": 1873.01,
+      "fifa_pts": 1876.4,
+      "fifa_rank": 2,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.05,
+        "penalty_for": 0.17,
+        "penalty_against": 0.11,
+        "injury": 0.06
+      }
+    },
+    "France": {
+      "elo": 1869.43,
+      "fifa_pts": 1877.32,
+      "fifa_rank": 1,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.07,
+        "penalty_for": 0.16,
+        "penalty_against": 0.14,
+        "injury": 0.07
+      }
+    },
+    "England": {
+      "elo": 1827.05,
+      "fifa_pts": 1825.97,
+      "fifa_rank": 4,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.05,
+        "penalty_for": 0.18,
+        "penalty_against": 0.12,
+        "injury": 0.07
+      }
+    },
+    "Portugal": {
+      "elo": 1766.18,
+      "fifa_pts": 1763.83,
+      "fifa_rank": 5,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.07,
+        "penalty_for": 0.16,
+        "penalty_against": 0.14,
+        "injury": 0.07
+      }
+    },
+    "Brazil": {
+      "elo": 1761.16,
+      "fifa_pts": 1761.16,
+      "fifa_rank": 6,
+      "confederation": "CONMEBOL",
+      "chaos_profile": {
+        "red_card": 0.13,
+        "penalty_for": 0.2,
+        "penalty_against": 0.18,
+        "injury": 0.08
+      }
+    },
+    "Netherlands": {
+      "elo": 1757.87,
+      "fifa_pts": 1757.87,
+      "fifa_rank": 7,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.07,
+        "penalty_for": 0.16,
+        "penalty_against": 0.14,
+        "injury": 0.07
+      }
+    },
+    "Morocco": {
+      "elo": 1755.87,
+      "fifa_pts": 1755.87,
+      "fifa_rank": 8,
+      "confederation": "CAF",
+      "chaos_profile": {
+        "red_card": 0.12,
+        "penalty_for": 0.18,
+        "penalty_against": 0.17,
+        "injury": 0.09
+      }
+    },
+    "Belgium": {
+      "elo": 1734.71,
+      "fifa_pts": 1734.71,
+      "fifa_rank": 9,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.07,
+        "penalty_for": 0.16,
+        "penalty_against": 0.14,
+        "injury": 0.07
+      }
+    },
+    "Germany": {
+      "elo": 1730.37,
+      "fifa_pts": 1730.37,
+      "fifa_rank": 10,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.05,
+        "penalty_for": 0.16,
+        "penalty_against": 0.12,
+        "injury": 0.07
+      }
+    },
+    "Croatia": {
+      "elo": 1717.07,
+      "fifa_pts": 1717.07,
+      "fifa_rank": 11,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.07,
+        "penalty_for": 0.16,
+        "penalty_against": 0.14,
+        "injury": 0.07
+      }
+    },
+    "Colombia": {
+      "elo": 1693.09,
+      "fifa_pts": 1693.09,
+      "fifa_rank": 13,
+      "confederation": "CONMEBOL",
+      "chaos_profile": {
+        "red_card": 0.13,
+        "penalty_for": 0.2,
+        "penalty_against": 0.18,
+        "injury": 0.08
+      }
+    },
+    "Senegal": {
+      "elo": 1688.99,
+      "fifa_pts": 1688.99,
+      "fifa_rank": 14,
+      "confederation": "CAF",
+      "chaos_profile": {
+        "red_card": 0.12,
+        "penalty_for": 0.18,
+        "penalty_against": 0.17,
+        "injury": 0.09
+      }
+    },
+    "Mexico": {
+      "elo": 1681.03,
+      "fifa_pts": 1681.03,
+      "fifa_rank": 15,
+      "confederation": "CONCACAF",
+      "chaos_profile": {
+        "red_card": 0.11,
+        "penalty_for": 0.17,
+        "penalty_against": 0.18,
+        "injury": 0.08
+      }
+    },
+    "United States": {
+      "elo": 1673.13,
+      "fifa_pts": 1673.13,
+      "fifa_rank": 16,
+      "confederation": "CONCACAF",
+      "chaos_profile": {
+        "red_card": 0.11,
+        "penalty_for": 0.17,
+        "penalty_against": 0.18,
+        "injury": 0.08
+      }
+    },
+    "Uruguay": {
+      "elo": 1673.07,
+      "fifa_pts": 1673.07,
+      "fifa_rank": 17,
+      "confederation": "CONMEBOL",
+      "chaos_profile": {
+        "red_card": 0.18,
+        "penalty_for": 0.19,
+        "penalty_against": 0.2,
+        "injury": 0.08
+      }
+    },
+    "Japan": {
+      "elo": 1660.43,
+      "fifa_pts": 1660.43,
+      "fifa_rank": 18,
+      "confederation": "AFC",
+      "chaos_profile": {
+        "red_card": 0.1,
+        "penalty_for": 0.16,
+        "penalty_against": 0.17,
+        "injury": 0.08
+      }
+    },
+    "Switzerland": {
+      "elo": 1649.4,
+      "fifa_pts": 1649.4,
+      "fifa_rank": 19,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.07,
+        "penalty_for": 0.16,
+        "penalty_against": 0.14,
+        "injury": 0.07
+      }
+    },
+    "Iran": {
+      "elo": 1615.0,
+      "fifa_pts": 1615.0,
+      "fifa_rank": 21,
+      "confederation": "AFC",
+      "chaos_profile": {
+        "red_card": 0.1,
+        "penalty_for": 0.16,
+        "penalty_against": 0.17,
+        "injury": 0.08
+      }
+    },
+    "Türkiye": {
+      "elo": 1599.0,
+      "fifa_pts": 1599.0,
+      "fifa_rank": 22,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.07,
+        "penalty_for": 0.16,
+        "penalty_against": 0.14,
+        "injury": 0.07
+      }
+    },
+    "Ecuador": {
+      "elo": 1594.0,
+      "fifa_pts": 1594.0,
+      "fifa_rank": 23,
+      "confederation": "CONMEBOL",
+      "chaos_profile": {
+        "red_card": 0.13,
+        "penalty_for": 0.2,
+        "penalty_against": 0.18,
+        "injury": 0.08
+      }
+    },
+    "Austria": {
+      "elo": 1593.0,
+      "fifa_pts": 1593.0,
+      "fifa_rank": 24,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.07,
+        "penalty_for": 0.16,
+        "penalty_against": 0.14,
+        "injury": 0.07
+      }
+    },
+    "Korea Republic": {
+      "elo": 1588.0,
+      "fifa_pts": 1588.0,
+      "fifa_rank": 25,
+      "confederation": "AFC",
+      "chaos_profile": {
+        "red_card": 0.1,
+        "penalty_for": 0.16,
+        "penalty_against": 0.17,
+        "injury": 0.08
+      }
+    },
+    "Australia": {
+      "elo": 1580.0,
+      "fifa_pts": 1580.0,
+      "fifa_rank": 27,
+      "confederation": "AFC",
+      "chaos_profile": {
+        "red_card": 0.1,
+        "penalty_for": 0.16,
+        "penalty_against": 0.17,
+        "injury": 0.08
+      }
+    },
+    "Algeria": {
+      "elo": 1564.0,
+      "fifa_pts": 1564.0,
+      "fifa_rank": 28,
+      "confederation": "CAF",
+      "chaos_profile": {
+        "red_card": 0.12,
+        "penalty_for": 0.18,
+        "penalty_against": 0.17,
+        "injury": 0.09
+      }
+    },
+    "Egypt": {
+      "elo": 1563.0,
+      "fifa_pts": 1563.0,
+      "fifa_rank": 29,
+      "confederation": "CAF",
+      "chaos_profile": {
+        "red_card": 0.12,
+        "penalty_for": 0.18,
+        "penalty_against": 0.17,
+        "injury": 0.09
+      }
+    },
+    "Canada": {
+      "elo": 1556.0,
+      "fifa_pts": 1556.0,
+      "fifa_rank": 30,
+      "confederation": "CONCACAF",
+      "chaos_profile": {
+        "red_card": 0.11,
+        "penalty_for": 0.17,
+        "penalty_against": 0.18,
+        "injury": 0.08
+      }
+    },
+    "Norway": {
+      "elo": 1550.0,
+      "fifa_pts": 1550.0,
+      "fifa_rank": 31,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.07,
+        "penalty_for": 0.16,
+        "penalty_against": 0.14,
+        "injury": 0.07
+      }
+    },
+    "Panama": {
+      "elo": 1540.0,
+      "fifa_pts": 1540.0,
+      "fifa_rank": 33,
+      "confederation": "CONCACAF",
+      "chaos_profile": {
+        "red_card": 0.11,
+        "penalty_for": 0.17,
+        "penalty_against": 0.18,
+        "injury": 0.08
+      }
+    },
+    "Ivory Coast": {
+      "elo": 1532.0,
+      "fifa_pts": 1532.0,
+      "fifa_rank": 34,
+      "confederation": "CAF",
+      "chaos_profile": {
+        "red_card": 0.12,
+        "penalty_for": 0.18,
+        "penalty_against": 0.17,
+        "injury": 0.09
+      }
+    },
+    "Sweden": {
+      "elo": 1514.0,
+      "fifa_pts": 1514.0,
+      "fifa_rank": 38,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.07,
+        "penalty_for": 0.16,
+        "penalty_against": 0.14,
+        "injury": 0.07
+      }
+    },
+    "Paraguay": {
+      "elo": 1503.0,
+      "fifa_pts": 1503.0,
+      "fifa_rank": 40,
+      "confederation": "CONMEBOL",
+      "chaos_profile": {
+        "red_card": 0.13,
+        "penalty_for": 0.2,
+        "penalty_against": 0.18,
+        "injury": 0.08
+      }
+    },
+    "Czechia": {
+      "elo": 1501.0,
+      "fifa_pts": 1501.0,
+      "fifa_rank": 41,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.07,
+        "penalty_for": 0.16,
+        "penalty_against": 0.14,
+        "injury": 0.07
+      }
+    },
+    "Scotland": {
+      "elo": 1498.0,
+      "fifa_pts": 1498.0,
+      "fifa_rank": 43,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.07,
+        "penalty_for": 0.16,
+        "penalty_against": 0.14,
+        "injury": 0.07
+      }
+    },
+    "Tunisia": {
+      "elo": 1483.0,
+      "fifa_pts": 1483.0,
+      "fifa_rank": 44,
+      "confederation": "CAF",
+      "chaos_profile": {
+        "red_card": 0.12,
+        "penalty_for": 0.18,
+        "penalty_against": 0.17,
+        "injury": 0.09
+      }
+    },
+    "DR Congo": {
+      "elo": 1478.0,
+      "fifa_pts": 1478.0,
+      "fifa_rank": 46,
+      "confederation": "CAF",
+      "chaos_profile": {
+        "red_card": 0.12,
+        "penalty_for": 0.18,
+        "penalty_against": 0.17,
+        "injury": 0.09
+      }
+    },
+    "Uzbekistan": {
+      "elo": 1465.0,
+      "fifa_pts": 1465.0,
+      "fifa_rank": 50,
+      "confederation": "AFC",
+      "chaos_profile": {
+        "red_card": 0.1,
+        "penalty_for": 0.16,
+        "penalty_against": 0.17,
+        "injury": 0.08
+      }
+    },
+    "Bosnia and Herzegovina": {
+      "elo": 1445.0,
+      "fifa_pts": 1445.0,
+      "fifa_rank": 55,
+      "confederation": "UEFA",
+      "chaos_profile": {
+        "red_card": 0.07,
+        "penalty_for": 0.16,
+        "penalty_against": 0.14,
+        "injury": 0.07
+      }
+    },
+    "Saudi Arabia": {
+      "elo": 1430.0,
+      "fifa_pts": 1430.0,
+      "fifa_rank": 56,
+      "confederation": "AFC",
+      "chaos_profile": {
+        "red_card": 0.1,
+        "penalty_for": 0.16,
+        "penalty_against": 0.17,
+        "injury": 0.08
+      }
+    },
+    "Ghana": {
+      "elo": 1390.0,
+      "fifa_pts": 1390.0,
+      "fifa_rank": 63,
+      "confederation": "CAF",
+      "chaos_profile": {
+        "red_card": 0.12,
+        "penalty_for": 0.18,
+        "penalty_against": 0.17,
+        "injury": 0.09
+      }
+    },
+    "Iraq": {
+      "elo": 1350.0,
+      "fifa_pts": 1350.0,
+      "fifa_rank": 70,
+      "confederation": "AFC",
+      "chaos_profile": {
+        "red_card": 0.1,
+        "penalty_for": 0.16,
+        "penalty_against": 0.17,
+        "injury": 0.08
+      }
+    },
+    "South Africa": {
+      "elo": 1365.0,
+      "fifa_pts": 1365.0,
+      "fifa_rank": 72,
+      "confederation": "CAF",
+      "chaos_profile": {
+        "red_card": 0.12,
+        "penalty_for": 0.18,
+        "penalty_against": 0.17,
+        "injury": 0.09
+      }
+    },
+    "Jordan": {
+      "elo": 1335.0,
+      "fifa_pts": 1335.0,
+      "fifa_rank": 76,
+      "confederation": "AFC",
+      "chaos_profile": {
+        "red_card": 0.1,
+        "penalty_for": 0.16,
+        "penalty_against": 0.17,
+        "injury": 0.08
+      }
+    },
+    "Cape Verde": {
+      "elo": 1325.0,
+      "fifa_pts": 1325.0,
+      "fifa_rank": 78,
+      "confederation": "CAF",
+      "chaos_profile": {
+        "red_card": 0.12,
+        "penalty_for": 0.18,
+        "penalty_against": 0.17,
+        "injury": 0.09
+      }
+    },
+    "Qatar": {
+      "elo": 1310.0,
+      "fifa_pts": 1310.0,
+      "fifa_rank": 81,
+      "confederation": "AFC",
+      "chaos_profile": {
+        "red_card": 0.1,
+        "penalty_for": 0.16,
+        "penalty_against": 0.17,
+        "injury": 0.08
+      }
+    },
+    "New Zealand": {
+      "elo": 1290.0,
+      "fifa_pts": 1290.0,
+      "fifa_rank": 87,
+      "confederation": "OFC",
+      "chaos_profile": {
+        "red_card": 0.09,
+        "penalty_for": 0.15,
+        "penalty_against": 0.17,
+        "injury": 0.08
+      }
+    },
+    "Curaçao": {
+      "elo": 1250.0,
+      "fifa_pts": 1250.0,
+      "fifa_rank": 102,
+      "confederation": "CONCACAF",
+      "chaos_profile": {
+        "red_card": 0.11,
+        "penalty_for": 0.17,
+        "penalty_against": 0.18,
+        "injury": 0.08
+      }
+    },
+    "Haiti": {
+      "elo": 1210.0,
+      "fifa_pts": 1210.0,
+      "fifa_rank": 112,
+      "confederation": "CONCACAF",
+      "chaos_profile": {
+        "red_card": 0.11,
+        "penalty_for": 0.17,
+        "penalty_against": 0.18,
+        "injury": 0.08
+      }
+    }
+  }
+}

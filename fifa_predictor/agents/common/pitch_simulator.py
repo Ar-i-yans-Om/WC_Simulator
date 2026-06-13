@@ -1,0 +1,191 @@
+"""
+agents/common/pitch_simulator.py
+=================================
+
+Pitch Simulator — Common node. The only node that sees both teams simultaneously.
+
+It produces each team's BASELINE expected goals (xG) for the normal course of
+play. Black-swan events (red card / VAR penalty / injury) are NOT modelled here:
+they are folded in downstream by the Chaos Agent + Judge as a probability-weighted
+mixture, so this node must estimate clean, no-disruption lambdas to avoid
+double-counting chaos.
+"""
+
+from __future__ import annotations
+
+import logging
+
+from pydantic import BaseModel
+
+from ...math_engine import elo_base_lambda, home_advantage_factors
+from ...schemas import PitchResult, TeamLambda
+
+logger = logging.getLogger(__name__)
+
+
+class _PitchEstimate(BaseModel):
+    lambda_a: float = 1.3
+    lambda_b: float = 1.3
+    collision_note: str = ""
+    reasoning: str = ""
+
+
+_PITCH_SYSTEM = """\
+You are an impartial match analyst assessing a football fixture for a World Cup
+prediction model. You receive both teams' complete pre-match context: tactical
+plans, squad chemistry, strategic intensity, fitness state, and recent form.
+
+Your task: estimate the BASELINE expected goals (xG) for each team over 90
+minutes of NORMAL play.
+
+IMPORTANT: Do NOT bake in red cards, VAR penalties, freak injuries or other
+black-swan disruptions. Those are modelled separately and folded in later as a
+probability-weighted mixture. Assume a clean, full-strength game throughout and
+estimate the lambdas accordingly - otherwise chaos would be double-counted.
+
+Think like a real analyst:
+- How do the two tactical styles interact? Does one exploit the other's weakness?
+- Does the intensity differential affect total goals?
+- Does fitness/travel fatigue meaningfully reduce one team's output?
+- Does chemistry (club clusters) create combinations that improve quality?
+- What does the ELO gap suggest about baseline relative quality?
+
+Typical ranges: 0.5 (very defensive/dominated) to 2.5 (dominant/clinical).
+Most World Cup group games fall between 0.8 and 1.9 per team.
+Set lambda_a and lambda_b independently — they do not need to be symmetric.\
+"""
+
+
+def _describe_team(name: str, packet: dict, elo: float, group_points: int) -> str:
+    form     = packet.get("form", {})
+    fitness  = packet.get("fitness", {})
+    cohesion = packet.get("cohesion", {})
+    strategy = packet.get("strategy", {})
+    tactics  = packet.get("tactics", {})
+
+    return (
+        f"=== {name} ===\n"
+        f"Strength: ELO {elo}, {group_points} group pts.\n"
+        f"Form: {form.get('avg_goals_scored','?')} scored / "
+        f"{form.get('avg_goals_conceded','?')} conceded. "
+        f"Results: {form.get('recent_results', [])}.\n"
+        f"Injuries: {form.get('injuries', []) or form.get('suspensions', []) or 'none'}.\n"
+        f"Fitness: ×{fitness.get('fitness_degradation_factor', 1.0)} "
+        f"(rest {fitness.get('rest_days','?')}d, "
+        f"travel {fitness.get('travel_km', 0):.0f}km).\n"
+        f"Chemistry: cohesion ×{cohesion.get('cohesion_multiplier', 1.0)} "
+        f"({len(cohesion.get('clusters', []))} club cluster(s)).\n"
+        f"Strategy: {strategy.get('matrix_mode','?')} — "
+        f"intensity ×{strategy.get('strategic_intensity_multiplier', 1.0)}. "
+        f"{strategy.get('reasoning','')}.\n"
+        f"Tactics: {tactics.get('plan_type','?')} / "
+        f"{tactics.get('formation','?')} / {tactics.get('style','?')}. "
+        f"Instructions: {tactics.get('key_instructions',[])}. "
+        f"Reasoning: {tactics.get('reasoning','')}."
+    )
+
+
+def make_pitch_simulator_node(llms: dict, settings):
+    sim_llm = llms["reasoning"]
+
+    def pitch_simulator_node(state: dict) -> dict:
+        cfg  = state["config"]
+        scn  = cfg["scenario"]
+        tournament_avg = scn.get("tournament_avg_goals", 1.35)
+
+        teams  = state.get("teams", {})
+        a, b   = teams.get("A", {}), teams.get("B", {})
+        a_name = a.get("form", {}).get("name", "Team A")
+        b_name = b.get("form", {}).get("name", "Team B")
+        a_elo  = scn["team_a"].get("elo", 1500.0)
+        b_elo  = scn["team_b"].get("elo", 1500.0)
+        a_pts  = scn["team_a"].get("group_points", 0)
+        b_pts  = scn["team_b"].get("group_points", 0)
+
+        a_plan = a.get("tactics", {})
+        b_plan = b.get("tactics", {})
+
+        anchor_a = round(elo_base_lambda(a_elo, b_elo, tournament_avg), 2)
+        anchor_b = round(elo_base_lambda(b_elo, a_elo, tournament_avg), 2)
+
+        # Home advantage: only when a host nation is playing in its OWN country.
+        venue_city = scn["team_a"].get("host_city_this_match", "")
+        ha_a, ha_b = home_advantage_factors(a_name, b_name, venue_city)
+        if (ha_a, ha_b) != (1.0, 1.0):
+            anchor_a = round(anchor_a * ha_a, 2)
+            anchor_b = round(anchor_b * ha_b, 2)
+            _home = a_name if ha_a > ha_b else b_name
+            logger.info("[PitchSim]  Home advantage: %s playing in %s "
+                        "(×%.2f home / ×%.2f away)",
+                        _home, venue_city, max(ha_a, ha_b), min(ha_a, ha_b))
+
+        logger.info("")
+        logger.info("[PitchSim] ══ TACTICAL COLLISION (baseline) ═══════════════════")
+        logger.info("[PitchSim]  %s  ─  ELO %.0f | λ_anchor %.2f | %s / %s | "
+                    "intensity ×%.2f | fitness ×%.3f",
+                    a_name, a_elo, anchor_a,
+                    a_plan.get("style", "?"), a_plan.get("formation", "?"),
+                    a.get("strategy", {}).get("strategic_intensity_multiplier", 1.0),
+                    a.get("fitness", {}).get("fitness_degradation_factor", 1.0))
+        logger.info("[PitchSim]  %s  ─  ELO %.0f | λ_anchor %.2f | %s / %s | "
+                    "intensity ×%.2f | fitness ×%.3f",
+                    b_name, b_elo, anchor_b,
+                    b_plan.get("style", "?"), b_plan.get("formation", "?"),
+                    b.get("strategy", {}).get("strategic_intensity_multiplier", 1.0),
+                    b.get("fitness", {}).get("fitness_degradation_factor", 1.0))
+
+        logger.info("[PitchSim]  Asking Gemini to assess baseline expected goals...")
+        estimate = sim_llm.structured(
+            _PitchEstimate,
+            system=_PITCH_SYSTEM,
+            user=(
+                f"Fixture: {a_name} vs {b_name} "
+                f"({scn.get('competition','FIFA World Cup 2026')}, "
+                f"{scn.get('stage','Group Stage')}).\n\n"
+                f"{_describe_team(a_name, a, a_elo, a_pts)}\n\n"
+                f"{_describe_team(b_name, b, b_elo, b_pts)}\n\n"
+                f"ELO-based statistical anchor (form only, ignores tactics): "
+                f"{a_name} {anchor_a} / {b_name} {anchor_b}.\n\n"
+                f"Estimate lambda_a ({a_name} xG) and lambda_b ({b_name} xG) "
+                f"for the full 90 minutes of normal play (no black-swan events). "
+                f"In collision_note: one sharp sentence on how these two tactical "
+                f"approaches interact."
+            ),
+        )
+
+        lam_final_a = round(max(0.3, min(3.5, estimate.lambda_a)), 4)
+        lam_final_b = round(max(0.3, min(3.5, estimate.lambda_b)), 4)
+        note        = estimate.collision_note or f"{a_name} vs {b_name}: tactical assessment."
+
+        lam_a = TeamLambda(name=a_name, lambda_base=anchor_a,
+                           cohesion=a.get("cohesion",{}).get("cohesion_multiplier",1.0),
+                           strategic_intensity=a.get("strategy",{}).get("strategic_intensity_multiplier",1.0),
+                           tactical_fit=1.0,
+                           fitness_degradation=a.get("fitness",{}).get("fitness_degradation_factor",1.0),
+                           lambda_final=lam_final_a)
+        lam_b = TeamLambda(name=b_name, lambda_base=anchor_b,
+                           cohesion=b.get("cohesion",{}).get("cohesion_multiplier",1.0),
+                           strategic_intensity=b.get("strategy",{}).get("strategic_intensity_multiplier",1.0),
+                           tactical_fit=1.0,
+                           fitness_degradation=b.get("fitness",{}).get("fitness_degradation_factor",1.0),
+                           lambda_final=lam_final_b)
+
+        if estimate.reasoning:
+            logger.info("[PitchSim]  Gemini reasoning: %s",
+                        estimate.reasoning[:300].replace("\n", " "))
+
+        logger.info("[PitchSim]  ── RESULT ──────────────────────────────────")
+        logger.info("[PitchSim]  λ %s = %.4f  (anchor was %.2f)", lam_a.name, lam_a.lambda_final, anchor_a)
+        logger.info("[PitchSim]  λ %s = %.4f  (anchor was %.2f)", lam_b.name, lam_b.lambda_final, anchor_b)
+        logger.info("[PitchSim]  Assessment: %s", note)
+
+        result = PitchResult(team_a=lam_a, team_b=lam_b, collision_note=note, phase="pre_chaos")
+        return {
+            "pitch": result.model_dump(),
+            "step_log": [
+                f"[PitchSim] λ {lam_a.name}={lam_a.lambda_final} | "
+                f"λ {lam_b.name}={lam_b.lambda_final} | {note}"
+            ],
+        }
+
+    return pitch_simulator_node
