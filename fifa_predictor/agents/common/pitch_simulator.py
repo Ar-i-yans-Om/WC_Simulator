@@ -32,23 +32,24 @@ class _PitchEstimate(BaseModel):
 
 _PITCH_SYSTEM = """\
 You are an impartial match analyst assessing a football fixture for a World Cup
-prediction model. You receive both teams' complete pre-match context: tactical
-plans, squad chemistry, strategic intensity, fitness state, and recent form.
+prediction model. You receive both teams' tactical plans, recent form and an
+ELO-based statistical anchor.
 
 Your task: estimate the BASELINE expected goals (xG) for each team over 90
-minutes of NORMAL play.
+minutes of NORMAL play, based ONLY on:
+  - the ELO / quality gap (the anchor is provided), and
+  - how the two tactical styles and formations interact (does one shape exploit
+    the other? does a low block smother a possession side? does a high line
+    invite direct balls in behind?).
 
-IMPORTANT: Do NOT bake in red cards, VAR penalties, freak injuries or other
-black-swan disruptions. Those are modelled separately and folded in later as a
-probability-weighted mixture. Assume a clean, full-strength game throughout and
-estimate the lambdas accordingly - otherwise chaos would be double-counted.
+Do NOT factor in squad chemistry, strategic intensity, or fitness/travel fatigue.
+Those levers are quantified elsewhere and multiplied into your estimate
+automatically afterwards — including them here would DOUBLE-COUNT them. They are
+shown to you as context for the collision_note only.
 
-Think like a real analyst:
-- How do the two tactical styles interact? Does one exploit the other's weakness?
-- Does the intensity differential affect total goals?
-- Does fitness/travel fatigue meaningfully reduce one team's output?
-- Does chemistry (club clusters) create combinations that improve quality?
-- What does the ELO gap suggest about baseline relative quality?
+Also do NOT bake in red cards, VAR penalties, freak injuries or other black-swan
+disruptions — those are folded in later as a probability-weighted mixture. Assume
+a clean, full-strength game.
 
 Typical ranges: 0.5 (very defensive/dominated) to 2.5 (dominant/clinical).
 Most World Cup group games fall between 0.8 and 1.9 per team.
@@ -63,11 +64,15 @@ def _describe_team(name: str, packet: dict, elo: float, group_points: int) -> st
     strategy = packet.get("strategy", {})
     tactics  = packet.get("tactics", {})
 
+    gs, gc = form.get("avg_goals_scored"), form.get("avg_goals_conceded")
+    form_rate = (f"{gs:.2f} scored / {gc:.2f} conceded (recent)"
+                 if gs is not None and gc is not None
+                 else "no recent-scoring rate available")
+
     return (
         f"=== {name} ===\n"
         f"Strength: ELO {elo}, {group_points} group pts.\n"
-        f"Form: {form.get('avg_goals_scored','?')} scored / "
-        f"{form.get('avg_goals_conceded','?')} conceded. "
+        f"Form: {form_rate}. "
         f"Results: {form.get('recent_results', [])}.\n"
         f"Injuries: {form.get('injuries', []) or form.get('suspensions', []) or 'none'}.\n"
         f"Fitness: ×{fitness.get('fitness_degradation_factor', 1.0)} "
@@ -153,21 +158,41 @@ def make_pitch_simulator_node(llms: dict, settings):
             ),
         )
 
-        lam_final_a = round(max(0.3, min(3.5, estimate.lambda_a)), 4)
-        lam_final_b = round(max(0.3, min(3.5, estimate.lambda_b)), 4)
+        # The LLM returns a CLEAN tactical/ELO baseline (it is told NOT to bake in
+        # chemistry, intensity or fitness). We now fuse the quantified levers in
+        # deterministically, so every agent's output actually moves the number and
+        # the "base × coh × int × fit × fit-deg = λ" identity holds exactly.
+        base_a = round(max(0.3, min(3.5, estimate.lambda_a)), 4)
+        base_b = round(max(0.3, min(3.5, estimate.lambda_b)), 4)
+
+        coh_a  = a.get("cohesion", {}).get("cohesion_multiplier", 1.0)
+        int_a  = a.get("strategy", {}).get("strategic_intensity_multiplier", 1.0)
+        fit_a  = a.get("tactics", {}).get("intended_tactical_fit", 1.0)
+        fdeg_a = a.get("fitness", {}).get("fitness_degradation_factor", 1.0)
+        # Deterministic scenario levers (from actual results.json / manual tuning).
+        mom_a  = scn["team_a"].get("tournament_momentum", 1.0)
+        dh_a   = scn["team_a"].get("dark_horse_factor", 1.0)
+
+        coh_b  = b.get("cohesion", {}).get("cohesion_multiplier", 1.0)
+        int_b  = b.get("strategy", {}).get("strategic_intensity_multiplier", 1.0)
+        fit_b  = b.get("tactics", {}).get("intended_tactical_fit", 1.0)
+        fdeg_b = b.get("fitness", {}).get("fitness_degradation_factor", 1.0)
+        mom_b  = scn["team_b"].get("tournament_momentum", 1.0)
+        dh_b   = scn["team_b"].get("dark_horse_factor", 1.0)
+
+        lam_final_a = round(max(0.3, min(3.5, base_a * coh_a * int_a * fit_a * fdeg_a * mom_a * dh_a)), 4)
+        lam_final_b = round(max(0.3, min(3.5, base_b * coh_b * int_b * fit_b * fdeg_b * mom_b * dh_b)), 4)
         note        = estimate.collision_note or f"{a_name} vs {b_name}: tactical assessment."
 
-        lam_a = TeamLambda(name=a_name, lambda_base=anchor_a,
-                           cohesion=a.get("cohesion",{}).get("cohesion_multiplier",1.0),
-                           strategic_intensity=a.get("strategy",{}).get("strategic_intensity_multiplier",1.0),
-                           tactical_fit=1.0,
-                           fitness_degradation=a.get("fitness",{}).get("fitness_degradation_factor",1.0),
+        lam_a = TeamLambda(name=a_name, lambda_base=base_a,
+                           cohesion=coh_a, strategic_intensity=int_a,
+                           tactical_fit=fit_a, fitness_degradation=fdeg_a,
+                           tournament_momentum=mom_a, dark_horse=dh_a,
                            lambda_final=lam_final_a)
-        lam_b = TeamLambda(name=b_name, lambda_base=anchor_b,
-                           cohesion=b.get("cohesion",{}).get("cohesion_multiplier",1.0),
-                           strategic_intensity=b.get("strategy",{}).get("strategic_intensity_multiplier",1.0),
-                           tactical_fit=1.0,
-                           fitness_degradation=b.get("fitness",{}).get("fitness_degradation_factor",1.0),
+        lam_b = TeamLambda(name=b_name, lambda_base=base_b,
+                           cohesion=coh_b, strategic_intensity=int_b,
+                           tactical_fit=fit_b, fitness_degradation=fdeg_b,
+                           tournament_momentum=mom_b, dark_horse=dh_b,
                            lambda_final=lam_final_b)
 
         if estimate.reasoning:
@@ -175,8 +200,10 @@ def make_pitch_simulator_node(llms: dict, settings):
                         estimate.reasoning[:300].replace("\n", " "))
 
         logger.info("[PitchSim]  ── RESULT ──────────────────────────────────")
-        logger.info("[PitchSim]  λ %s = %.4f  (anchor was %.2f)", lam_a.name, lam_a.lambda_final, anchor_a)
-        logger.info("[PitchSim]  λ %s = %.4f  (anchor was %.2f)", lam_b.name, lam_b.lambda_final, anchor_b)
+        logger.info("[PitchSim]  λ %s = %.4f = base %.2f × coh %.2f × int %.2f × fit %.2f × fitdeg %.3f × mom %.3f × dh %.2f  (ELO anchor %.2f)",
+                    lam_a.name, lam_a.lambda_final, base_a, coh_a, int_a, fit_a, fdeg_a, mom_a, dh_a, anchor_a)
+        logger.info("[PitchSim]  λ %s = %.4f = base %.2f × coh %.2f × int %.2f × fit %.2f × fitdeg %.3f × mom %.3f × dh %.2f  (ELO anchor %.2f)",
+                    lam_b.name, lam_b.lambda_final, base_b, coh_b, int_b, fit_b, fdeg_b, mom_b, dh_b, anchor_b)
         logger.info("[PitchSim]  Assessment: %s", note)
 
         result = PitchResult(team_a=lam_a, team_b=lam_b, collision_note=note, phase="pre_chaos")

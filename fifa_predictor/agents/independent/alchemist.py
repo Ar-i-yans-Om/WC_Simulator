@@ -85,7 +85,14 @@ def make_alchemist_node(llms: dict, settings, team_key: str):
     def alchemist_node(state: dict) -> dict:
         team        = get_team(state, team_key)
         form        = team.get("form", {})
-        squad_clubs = form.get("squad_clubs", {}) or {}
+        # squad_clubs is now a list of {player, club} entries — fold to a {name:club}
+        # map for clustering/logging (tolerates the legacy dict form too).
+        raw_clubs   = form.get("squad_clubs", []) or []
+        if isinstance(raw_clubs, dict):
+            squad_clubs = dict(raw_clubs)
+        else:
+            squad_clubs = {e.get("player"): e.get("club", "")
+                           for e in raw_clubs if isinstance(e, dict) and e.get("player")}
         name        = form.get("name", team_key)
 
         logger.info("")

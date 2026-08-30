@@ -83,6 +83,7 @@ Real fixtures via the data-driven runner:
 python match_runner.py --fixture K5     # single fixture by ID
 python match_runner.py --group K        # whole group
 python match_runner.py --md 1           # a whole matchday
+python match_runner.py --round R16      # a whole knockout round (R32/R16/QF/SF/3P/F)
 python match_runner.py --no-chaos       # baseline only
 ```
 
@@ -98,6 +99,15 @@ final = run_prediction(
 print(final["report"]["win_draw_loss"])
 print(final["poisson"]["grid"])          # full 0-0..7-7 probability matrix
 ```
+
+## Knockout stage
+
+The tournament runs end-to-end. Group results feed a **bracket resolver**: knockout
+fixtures (`M73`–`M104` in `fixtures.json`) carry slot-reference `home`/`away`
+(`1A`/`2B`/`3E` group slots, `W77`/`L101` match slots) that `match_runner`
+resolves from `results.json` — final group standings for the Round of 32, and
+match winners thereafter (a level tie decided on penalties adds `"winner"` to its
+result). Run a round with `--round R16` once the prior round's results are in.
 
 ## Tests
 
@@ -187,10 +197,13 @@ distribution are always consistent.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `GEMINI_API_KEY` | — | Required for live runs |
-| `FIFA_RESEARCH_MODEL` | `gemini-2.0-flash` | Research tier |
-| `FIFA_REASONING_MODEL` | `gemini-2.0-flash` | Independent strategy agents + pitch |
-| `FIFA_JUDGE_MODEL` | `gemini-1.5-pro` | Final critic / report |
+| `GEMINI_API_KEY` | — | Required for live runs (the primary key) |
+| `GEMINI_API_KEYS` | — | Extra keys (comma/space/newline separated) for auto-failover on auth/quota errors — multiplies free-tier quota |
+| `FIFA_RESEARCH_MODEL` | `gemini-2.5-flash-lite` | Grounded research tier (Researcher, Bookmaker) |
+| `FIFA_REASONING_MODEL` | `gemini-3.1-flash-lite` | Ungrounded strategy agents + pitch (bulk of calls) |
+| `FIFA_JUDGE_MODEL` | `gemini-3.1-flash-lite` | Final critic / report |
+| `FIFA_FALLBACK_MODELS` | _(empty)_ | Optional capacity-fallback chain for 503/"overloaded" errors. Empty by default — 503s rotate KEYS instead. Set models here only if you want a second capacity pool |
+| `FIFA_DISABLE_GROUNDING` | `0` | Set `1` to skip Google Search grounding (its own small free quota) and use model knowledge only |
 | `FIFA_MAX_SEARCHES` | `6` | Google Search cap per Researcher pass |
 | `ODDS_API_KEY` | — | Live H2H odds for the Bookmaker (the-odds-api.com) |
 | `FIFA_CHAOS_PROB` | `0.22` | Total black-swan probability woven into the run (0 = off) |

@@ -64,7 +64,9 @@ def _print_report(final: dict) -> None:
                 f"x coh {tl.get('cohesion',1):.2f} x int "
                 f"{tl.get('strategic_intensity',1):.2f} x fit "
                 f"{tl.get('tactical_fit',1):.2f} x fit-deg "
-                f"{tl.get('fitness_degradation',1):.2f} = "
+                f"{tl.get('fitness_degradation',1):.2f} x mom "
+                f"{tl.get('tournament_momentum',1):.2f} x dh "
+                f"{tl.get('dark_horse',1):.2f} = "
                 f"lambda {tl.get('lambda_final',0):.2f}"
             )
 

@@ -43,6 +43,17 @@ def setup(verbose: bool = False) -> None:
     verbose=True  → DEBUG level (very noisy, shows all internal library logs)
     verbose=False → INFO level  (agent decisions only — the default)
     """
+    # On Windows, sys.stdout/stderr default to the cp1252 codepage when output is
+    # redirected (to a file/pipe). The agent logs and print_result() emit Unicode
+    # (→ ✗ ─ ✎ ⚡ …), and a single un-encodable char raises UnicodeEncodeError that
+    # aborts the whole fixture AFTER a successful prediction. Force UTF-8 with
+    # errors="replace" so output can never crash a run. (Python 3.7+ .reconfigure.)
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
     level = logging.DEBUG if verbose else logging.INFO
 
     logging.basicConfig(

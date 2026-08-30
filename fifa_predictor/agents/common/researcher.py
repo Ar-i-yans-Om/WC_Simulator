@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -35,7 +36,7 @@ from ...data_sources import (
     compute_fitness_profile, travel_distance_km, venue_altitude_m,
     venue_climate, team_home_climate,
 )
-from ...schemas import GlobalResearch, TeamForm
+from ...schemas import GlobalResearch, SquadEntry, TeamForm
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,60 @@ def _squad_clubs_from_roster(players: list[dict]) -> dict[str, str]:
         for p in players
         if p.get("Player") and p.get("Club")
     }
+
+
+def _entries_to_dict(entries) -> dict[str, str]:
+    """Normalise squad_clubs (now a List[SquadEntry] / list of dicts) into a plain
+    {player: club} map for merging and logging."""
+    out: dict[str, str] = {}
+    for e in entries or []:
+        player = getattr(e, "player", None) if not isinstance(e, dict) else e.get("player")
+        club = getattr(e, "club", None) if not isinstance(e, dict) else e.get("club")
+        if player:
+            out[player] = club or ""
+    return out
+
+
+def _dict_to_entries(d: dict[str, str]) -> list[SquadEntry]:
+    """Inverse of _entries_to_dict: a {player: club} map → List[SquadEntry]."""
+    return [SquadEntry(player=p, club=c) for p, c in (d or {}).items()]
+
+
+# Matches a structured recent-result string like "W 2-1 vs France (WCQ)" or
+# "L 0-2 vs Spain". The first number is the team's own goals, the second the
+# opponent's.
+_RESULT_SCORE_RE = re.compile(r"^\s*[WDL]\s*[:\-]?\s*(\d+)\s*[-–—]\s*(\d+)", re.IGNORECASE)
+
+
+def _wc_result_strings(scn_team: dict) -> list[str]:
+    """Turn the actual WC matches played (from results.json, via the scenario)
+    into recent-result strings the avg-goals parser understands, e.g.
+    'W 2-0 vs South Africa (WC MD1)'. Most recent last."""
+    out: list[str] = []
+    for m in scn_team.get("tournament_results", []) or []:
+        out.append(
+            f"{m.get('result','?')} {m.get('gf','?')}-{m.get('ga','?')} "
+            f"vs {m.get('opponent','?')} (WC MD{m.get('md','?')})"
+        )
+    return out
+
+
+def _avg_goals_from_results(results: list[str]) -> tuple[float | None, float | None]:
+    """Deterministically derive (avg scored, avg conceded) from the parsed
+    recent-results strings. Returns (None, None) if nothing parseable — so a
+    missing rate stays explicitly absent rather than the old 1.3/1.2 placeholder.
+    """
+    scored, conceded = [], []
+    for r in results or []:
+        m = _RESULT_SCORE_RE.match(str(r))
+        if not m:
+            continue
+        scored.append(int(m.group(1)))
+        conceded.append(int(m.group(2)))
+    if not scored:
+        return None, None
+    return (round(sum(scored) / len(scored), 2),
+            round(sum(conceded) / len(conceded), 2))
 
 
 def _roster_summary(players: list[dict]) -> str:
@@ -233,6 +288,7 @@ STRENGTH SIGNALS (reference only — do not compute anything from these):
   {a['name']}: ELO {a.get('elo', '?')} · FIFA rank #{a.get('fifa_rank', '?')} · {a.get('confederation', '')}
   {b['name']}: ELO {b.get('elo', '?')} · FIFA rank #{b.get('fifa_rank', '?')} · {b.get('confederation', '')}
   Group points entering this match: {a['name']}={a.get('group_points', 0)} pts  {b['name']}={b.get('group_points', 0)} pts
+  Tournament form so far (actual WC results): {a['name']}: {a.get('tournament_form_summary') or 'no matches played yet'} · {b['name']}: {b.get('tournament_form_summary') or 'no matches played yet'}
 
 ──────────────────────────────────────────────────────────────
 COMPUTED PHYSICAL & SCHEDULING CONTEXT
@@ -312,8 +368,8 @@ def _log_team(label: str, form: TeamForm, fit: dict, players_raw: list[dict]) ->
     logger.info("  ┌─ %s ─────────────────────────────────────────", label.upper())
 
     # Form stats — only print if populated from live data (not schema defaults)
-    if form.avg_goals_scored and form.avg_goals_scored != 1.3:
-        logger.info("  │  Form      : scored %.2f / conceded %.2f (last 5–6 matches)",
+    if form.avg_goals_scored is not None:
+        logger.info("  │  Form      : scored %.2f / conceded %.2f (parsed from results)",
                     form.avg_goals_scored, form.avg_goals_conceded)
     if form.recent_results:
         logger.info("  │  Results   : %s", "  ".join(form.recent_results[:6]))
@@ -349,7 +405,7 @@ def _log_team(label: str, form: TeamForm, fit: dict, players_raw: list[dict]) ->
         logger.info("  │  Weaknesses: %s", " · ".join(weaknesses))
 
     # Club distribution from verified squad
-    squad = form.squad_clubs or {}
+    squad = _entries_to_dict(form.squad_clubs)
     if squad:
         clubs = Counter(squad.values())
         top = sorted(clubs.items(), key=lambda x: -x[1])[:6]
@@ -421,12 +477,12 @@ def make_researcher_node(llms: dict, settings, data_dir: str | Path | None = Non
         a_form = TeamForm(
             name=a_scn["name"],
             fifa_rank=a_scn.get("fifa_rank", 30),
-            squad_clubs=a_squad_clubs,
+            squad_clubs=_dict_to_entries(a_squad_clubs),
         )
         b_form = TeamForm(
             name=b_scn["name"],
             fifa_rank=b_scn.get("fifa_rank", 30),
-            squad_clubs=b_squad_clubs,
+            squad_clubs=_dict_to_entries(b_squad_clubs),
         )
 
         fixture_summary = ""
@@ -466,11 +522,11 @@ def make_researcher_node(llms: dict, settings, data_dir: str | Path | None = Non
                 "  suspensions      : confirmed suspensions only.\n"
                 "  likely_lineup    : predicted XI and formation if reported, e.g. "
                 "'4-3-3: Lloris; Pavard Upamecano Konate Hernandez; ...'.\n"
-                "  squad_clubs      : player_name → club for ALL squad members. "
-                "The pre-loaded roster data is the ground truth; update only where "
-                "the briefing reports a transfer or loan change.\n"
-                "  avg_goals_scored / avg_goals_conceded: leave at schema defaults — "
-                "do NOT compute these from raw scorelines.\n"
+                "  squad_clubs      : a LIST of {player, club} entries for ALL squad "
+                "members. The pre-loaded roster data is the ground truth; update only "
+                "where the briefing reports a transfer or loan change.\n"
+                "  avg_goals_scored / avg_goals_conceded: leave null — they are "
+                "computed deterministically downstream from the parsed results.\n"
                 "  public_weaknesses: only weaknesses explicitly cited in published "
                 "reporting. No editorial additions.\n"
                 "  fitness fields   : leave at defaults — already computed separately."
@@ -505,9 +561,8 @@ def make_researcher_node(llms: dict, settings, data_dir: str | Path | None = Non
                     setattr(base, attr, val)
 
             merged_clubs = dict(seed_clubs)
-            if live.squad_clubs:
-                merged_clubs.update(live.squad_clubs)
-            base.squad_clubs = merged_clubs
+            merged_clubs.update(_entries_to_dict(live.squad_clubs))  # live overrides on conflict
+            base.squad_clubs = _dict_to_entries(merged_clubs)
             return base
 
         a_form = _merge_live(a_form, structured.team_a_form, a_squad_clubs)
@@ -516,6 +571,23 @@ def make_researcher_node(llms: dict, settings, data_dir: str | Path | None = Non
         # Enforce correct names regardless of what the LLM wrote
         a_form.name = a_scn["name"]
         b_form.name = b_scn["name"]
+
+        # Fold the ACTUAL World Cup results played so far (MD1+) onto the end of
+        # recent_results — real, deterministic, from results.json (never the web
+        # or predictions). These are the strongest in-tournament signal.
+        for form, scn_team in ((a_form, a_scn), (b_form, b_scn)):
+            wc = _wc_result_strings(scn_team)
+            if wc:
+                form.recent_results = list(form.recent_results or []) + wc
+
+        # Derive recent scoring rates deterministically from the parsed results
+        # (the structurer is told NOT to compute them). This feeds the Pitch
+        # Simulator real numbers, never the old 1.3/1.2 placeholder; if a team's
+        # results aren't parseable the rates stay None and are shown as absent.
+        for form in (a_form, b_form):
+            form.avg_goals_scored, form.avg_goals_conceded = \
+                _avg_goals_from_results(form.recent_results)
+
         fixture_summary = structured.fixture_summary
         sources = structured.sources
 

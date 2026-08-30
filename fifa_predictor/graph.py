@@ -161,6 +161,8 @@ def run_prediction(
     Returns the final AgentState dict (containing `report`, `poisson`,
     `bookmaker`, `pitch`, `chaos`, `step_log`).
     """
+    from .llm import reset_run_quality, run_quality_summary
+
     settings = settings or Settings.from_env()
     scenario = scenario or default_portugal_france_scenario()
     # Only require a live API key when we are building the real LLM clients.
@@ -168,8 +170,13 @@ def run_prediction(
     if llms is None:
         settings.validate()
 
+    # Reset the per-run quality ledger so the `quality` stamp reflects only this
+    # fixture's calls (fixtures run sequentially).
+    reset_run_quality()
     app = build_graph(settings, llms=llms)
-    return app.invoke(initial_state(scenario, settings))
+    final = app.invoke(initial_state(scenario, settings))
+    final["quality"] = run_quality_summary()
+    return final
 
 
 def export_mermaid(settings: Optional[Settings] = None, llms: Optional[dict] = None) -> str:

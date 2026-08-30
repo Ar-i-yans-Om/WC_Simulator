@@ -92,6 +92,8 @@ def make_strategist_node(llms: dict, settings, team_key: str):
                 f"My team: {name} ({conf}), Group {group}, Matchday {matchday}.\n"
                 f"Our ELO: {elo}. Opponent: {opp_scn.get('name','?')} (ELO {opp_elo}).\n"
                 f"Our group points going into this match: {points}.\n"
+                f"Tournament form so far (actual WC results): "
+                f"{scn_team.get('tournament_form_summary') or 'no matches played yet (this is MD1)'}.\n"
                 f"Recent form: {recent if recent else 'see briefing'}.\n"
                 f"Squad concerns: {injuries if injuries else 'none confirmed'}.\n"
                 f"Notes: {scn_team.get('notes', 'none')}.\n\n"

@@ -47,20 +47,29 @@ class FitnessProfile(BaseModel):
     fitness_degradation_factor: float = 1.0
 
 
+class SquadEntry(BaseModel):
+    """One player→club pairing. A list of these (instead of a Dict[str,str] map)
+    so the whole TeamForm is representable as a native Gemini response_schema —
+    arbitrary-key maps are not."""
+
+    player: str = ""
+    club: str = ""
+
+
 class TeamForm(BaseModel):
     """Raw, strategy-free statistics for one team (the 'global pulse')."""
 
     name: str = "Unknown"
     fifa_rank: int = 20
     recent_results: List[str] = Field(default_factory=list)        # e.g. ["W","W","D"]
-    avg_goals_scored: float = 1.3                                  # recent attacking rate
-    avg_goals_conceded: float = 1.2                                # recent defensive rate
+    avg_goals_scored: Optional[float] = None    # recent attacking rate (computed from results)
+    avg_goals_conceded: Optional[float] = None  # recent defensive rate (computed from results)
     recent_xg_for: Optional[float] = None
     recent_xg_against: Optional[float] = None
     injuries: List[str] = Field(default_factory=list)
     suspensions: List[str] = Field(default_factory=list)
     likely_lineup: str = ""   # predicted XI + formation from press conf / reporters
-    squad_clubs: Dict[str, str] = Field(default_factory=dict)      # player -> club
+    squad_clubs: List[SquadEntry] = Field(default_factory=list)    # player→club pairings
     public_weaknesses: List[str] = Field(default_factory=list)     # publicly known frailties
     notes: str = ""
 
@@ -140,6 +149,8 @@ class TeamLambda(BaseModel):
     strategic_intensity: float = 1.0
     tactical_fit: float = 1.0
     fitness_degradation: float = 1.0
+    tournament_momentum: float = 1.0   # deterministic, from actual MD1+ results
+    dark_horse: float = 1.0            # manual per-team under/over-rating factor
     lambda_final: float = 1.3
 
 
@@ -210,7 +221,7 @@ class PoissonReport(BaseModel):
     expected_goals_home: float = 0.0
     expected_goals_away: float = 0.0
     grid: List[List[float]] = Field(default_factory=list)   # full 0-0..N-N matrix
-    max_goals: int = 7                                       # grid spans 0..max_goals
+    max_goals: int = 4                                       # grid spans 0..max_goals
 
 
 class FinalReport(BaseModel):
@@ -223,6 +234,23 @@ class FinalReport(BaseModel):
     chaos_impact: str = ""
     narrative: str = ""
     confidence: Literal["low", "medium", "high"] = "medium"
+
+
+class JudgeProse(BaseModel):
+    """
+    The PROSE-only slice the Judge asks the LLM for.
+
+    The numbers (scoreline, W/D/L, confidence) are computed deterministically, so
+    the model is asked for exactly these four narrative fields — nothing it's told
+    to 'leave blank'. That removes the cue that made small models return an
+    all-empty FinalReport, and (having no Dict field) it qualifies for native
+    response_schema, which constrains the model to actually fill the prose.
+    """
+
+    headline: str = ""
+    model_vs_market: str = ""
+    narrative: str = ""
+    chaos_impact: str = ""
 
 
 # ===========================================================================

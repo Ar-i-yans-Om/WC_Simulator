@@ -15,4 +15,3 @@ lxml>=5.0            # html parser backend for pandas.read_html
 
 # Convenience
 python-dotenv>=1.0   # load GEMINI_API_KEY from a .env file
-streamlit

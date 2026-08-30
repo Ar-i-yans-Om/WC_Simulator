@@ -73,6 +73,44 @@
     {"id":"L3","group":"L","md":2,"home":"England","away":"Ghana","date":"2026-06-23","venue":"Hard Rock Stadium","city":"Miami"},
     {"id":"L4","group":"L","md":2,"home":"Croatia","away":"Panama","date":"2026-06-23","venue":"Arrowhead Stadium","city":"Kansas City"},
     {"id":"L5","group":"L","md":3,"home":"England","away":"Panama","date":"2026-06-27","venue":"SoFi Stadium","city":"Inglewood"},
-    {"id":"L6","group":"L","md":3,"home":"Croatia","away":"Ghana","date":"2026-06-27","venue":"Levi's Stadium","city":"Santa Clara"}
+    {"id":"L6","group":"L","md":3,"home":"Croatia","away":"Ghana","date":"2026-06-27","venue":"Levi's Stadium","city":"Santa Clara"},
+
+    {"id":"M73","round":"R32","match_no":73,"home":"2A","away":"2B","date":"2026-06-28","venue":"SoFi Stadium","city":"Inglewood"},
+    {"id":"M74","round":"R32","match_no":74,"home":"1E","away":"3D","date":"2026-06-29","venue":"Gillette Stadium","city":"Foxboro"},
+    {"id":"M75","round":"R32","match_no":75,"home":"1F","away":"2C","date":"2026-06-29","venue":"Estadio BBVA","city":"Monterrey"},
+    {"id":"M76","round":"R32","match_no":76,"home":"1C","away":"2F","date":"2026-06-29","venue":"NRG Stadium","city":"Houston"},
+    {"id":"M77","round":"R32","match_no":77,"home":"1I","away":"3F","date":"2026-06-30","venue":"MetLife Stadium","city":"East Rutherford"},
+    {"id":"M78","round":"R32","match_no":78,"home":"2E","away":"2I","date":"2026-06-30","venue":"AT&T Stadium","city":"Arlington"},
+    {"id":"M79","round":"R32","match_no":79,"home":"1A","away":"3E","date":"2026-06-30","venue":"Estadio Azteca","city":"Mexico City"},
+    {"id":"M80","round":"R32","match_no":80,"home":"1L","away":"3K","date":"2026-07-01","venue":"Mercedes-Benz Stadium","city":"Atlanta"},
+    {"id":"M81","round":"R32","match_no":81,"home":"1D","away":"3B","date":"2026-07-01","venue":"Levi's Stadium","city":"Santa Clara"},
+    {"id":"M82","round":"R32","match_no":82,"home":"1G","away":"3I","date":"2026-07-01","venue":"Lumen Field","city":"Seattle"},
+    {"id":"M83","round":"R32","match_no":83,"home":"2K","away":"2L","date":"2026-07-02","venue":"BMO Field","city":"Toronto"},
+    {"id":"M84","round":"R32","match_no":84,"home":"1H","away":"2J","date":"2026-07-02","venue":"SoFi Stadium","city":"Inglewood"},
+    {"id":"M85","round":"R32","match_no":85,"home":"1B","away":"3J","date":"2026-07-02","venue":"BC Place","city":"Vancouver"},
+    {"id":"M86","round":"R32","match_no":86,"home":"1J","away":"2H","date":"2026-07-03","venue":"Hard Rock Stadium","city":"Miami"},
+    {"id":"M87","round":"R32","match_no":87,"home":"1K","away":"3L","date":"2026-07-03","venue":"Arrowhead Stadium","city":"Kansas City"},
+    {"id":"M88","round":"R32","match_no":88,"home":"2D","away":"2G","date":"2026-07-03","venue":"AT&T Stadium","city":"Arlington"},
+
+    {"id":"M89","round":"R16","match_no":89,"home":"W74","away":"W77","date":"2026-07-04","venue":"Lincoln Financial Field","city":"Philadelphia"},
+    {"id":"M90","round":"R16","match_no":90,"home":"W73","away":"W75","date":"2026-07-04","venue":"NRG Stadium","city":"Houston"},
+    {"id":"M91","round":"R16","match_no":91,"home":"W76","away":"W78","date":"2026-07-05","venue":"MetLife Stadium","city":"East Rutherford"},
+    {"id":"M92","round":"R16","match_no":92,"home":"W79","away":"W80","date":"2026-07-05","venue":"Estadio Azteca","city":"Mexico City"},
+    {"id":"M93","round":"R16","match_no":93,"home":"W83","away":"W84","date":"2026-07-06","venue":"AT&T Stadium","city":"Arlington"},
+    {"id":"M94","round":"R16","match_no":94,"home":"W81","away":"W82","date":"2026-07-06","venue":"Lumen Field","city":"Seattle"},
+    {"id":"M95","round":"R16","match_no":95,"home":"W86","away":"W88","date":"2026-07-07","venue":"Mercedes-Benz Stadium","city":"Atlanta"},
+    {"id":"M96","round":"R16","match_no":96,"home":"W85","away":"W87","date":"2026-07-07","venue":"BC Place","city":"Vancouver"},
+
+    {"id":"M97","round":"QF","match_no":97,"home":"W89","away":"W90","date":"2026-07-09","venue":"Gillette Stadium","city":"Foxboro"},
+    {"id":"M98","round":"QF","match_no":98,"home":"W93","away":"W94","date":"2026-07-10","venue":"SoFi Stadium","city":"Inglewood"},
+    {"id":"M99","round":"QF","match_no":99,"home":"W91","away":"W92","date":"2026-07-11","venue":"Hard Rock Stadium","city":"Miami"},
+    {"id":"M100","round":"QF","match_no":100,"home":"W95","away":"W96","date":"2026-07-11","venue":"Arrowhead Stadium","city":"Kansas City"},
+
+    {"id":"M101","round":"SF","match_no":101,"home":"W97","away":"W98","date":"2026-07-14","venue":"AT&T Stadium","city":"Arlington"},
+    {"id":"M102","round":"SF","match_no":102,"home":"W99","away":"W100","date":"2026-07-15","venue":"Mercedes-Benz Stadium","city":"Atlanta"},
+
+    {"id":"M103","round":"3P","match_no":103,"home":"L101","away":"L102","date":"2026-07-18","venue":"Hard Rock Stadium","city":"Miami"},
+
+    {"id":"M104","round":"F","match_no":104,"home":"W101","away":"W102","date":"2026-07-19","venue":"MetLife Stadium","city":"East Rutherford"}
   ]
 }

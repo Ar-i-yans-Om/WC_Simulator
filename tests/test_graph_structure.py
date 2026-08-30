@@ -213,8 +213,9 @@ def test_match_runner_builds_scenario_from_data():
     scenario = build_scenario(k5, ratings, fixtures, results)
     assert scenario.team_a.name == "Portugal"
     assert scenario.team_b.name == "Colombia"
-    assert scenario.team_a.elo  == 1766.18
-    assert scenario.team_b.elo  == 1693.09
+    # Read expected ELO from the ratings file so this stays correct across refreshes.
+    assert scenario.team_a.elo  == float(ratings["Portugal"]["elo"])
+    assert scenario.team_b.elo  == float(ratings["Colombia"]["elo"])
     assert scenario.team_a.group == "K"
 
 

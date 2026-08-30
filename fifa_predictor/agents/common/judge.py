@@ -23,7 +23,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from ...math_engine import mixture_grid, poisson_grid
-from ...schemas import FinalReport, PoissonReport
+from ...schemas import FinalReport, JudgeProse, PoissonReport
 
 
 _JUDGE_SYSTEM = (
@@ -75,7 +75,7 @@ def make_judge_node(llms: dict, settings):
 
         chaos = state.get("chaos", {})
         scenarios = chaos.get("scenarios", [])
-        max_goals = state["config"].get("settings", {}).get("max_goals", 7)
+        max_goals = state["config"].get("settings", {}).get("max_goals", 4)
 
         logger.info("")
         logger.info("[Judge] ══ MIXTURE POISSON VERDICT ═══════════════════════════")
@@ -170,13 +170,13 @@ def make_judge_node(llms: dict, settings):
         # "keep X / use exact Y / enrich the rest" phrasing cued small reasoning
         # models to treat the object as pre-filled and return all-empty strings.
         enriched = judge_llm.structured(
-            FinalReport,
+            JudgeProse,
             system=_JUDGE_SYSTEM,
             user=(
                 "Write the executive match report as JSON. The statistical model "
                 "is final and appears in REFERENCE DATA — do not recompute or "
                 "alter any probabilities or the scoreline.\n\n"
-                "Populate these fields with original prose:\n"
+                "Populate ALL FOUR fields with original prose (every one non-empty):\n"
                 "  • headline — one punchy sentence naming the likely result.\n"
                 "  • model_vs_market — 1-2 sentences on where the model and "
                 "market agree or diverge and what that implies.\n"
@@ -184,11 +184,7 @@ def make_judge_node(llms: dict, settings):
                 "(tactics, chemistry, fitness, the weighted chaos mass), not a "
                 "restatement of the percentages.\n"
                 "  • chaos_impact — one sentence on how the weighted black-swan "
-                "contribution shifts the picture.\n"
-                "For predicted_scoreline and win_draw_loss you may echo the "
-                "REFERENCE DATA values or leave them blank; they are set "
-                "authoritatively downstream. Every prose field above must be "
-                "non-empty."
+                "contribution shifts the picture."
             ),
             context=context,
         )

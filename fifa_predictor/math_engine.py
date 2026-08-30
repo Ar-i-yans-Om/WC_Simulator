@@ -27,7 +27,7 @@ from __future__ import annotations
 import math
 from typing import Dict, List
 
-DEFAULT_MAX_GOALS = 7  # grid spans 0-0 .. 7-7 by default
+DEFAULT_MAX_GOALS = 7  # grid spans 0-0 .. 7-7 (wide enough not to truncate strong teams)
 
 
 # ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ ELO_SCALE_DIVISOR = 400.0   # definitional ELO constant; do NOT treat as a knob
 #   k < 1  -> muted spread, total goals FALL as the ELO gap widens
 #   k = 1  -> total goals flat across all gaps
 #   k > 1  -> opinionated spread, total goals RISE as the gap widens   <-- chosen
-ELO_LAMBDA_EXPONENT = 1.2
+ELO_LAMBDA_EXPONENT = 0.75
 ELO_LAMBDA_FLOOR = 0.3      # binds for the underdog in big mismatches (>~300 ELO)
 ELO_LAMBDA_CEIL  = 3.5      # binds for the favourite only at high tournament_avg
 

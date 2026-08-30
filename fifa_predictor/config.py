@@ -14,21 +14,32 @@ The analysts (agents) do the rest.
 
 MODEL ROUTING (free-tier quota strategy)
 ----------------------------------------
-Gemini free-tier rate limits are PER MODEL, so splitting work across two models
-gives two independent quota buckets. We exploit that:
+Gemini free-tier rate limits are PER MODEL (per project/key), so splitting work
+across two models gives two independent daily quota buckets per key. We exploit that:
 
   * research_model  → the GROUNDED web-research calls (Researcher, Bookmaker).
-    Only ~2 such calls per fixture, and they benefit most from a stronger model
-    + real Google Search grounding. Routed to Gemini 3 Flash.
+    Only ~2 such calls per fixture, and they benefit most from real Google
+    Search grounding. Routed to gemini-2.5-flash-lite.
   * reasoning_model / judge_model → all the UNGROUNDED structured calls
     (Alchemist, Strategist, Scout, Tactician, PitchSim, Judge). These are pure
-    reasoning over already-gathered context; Flash-Lite is plenty and carries
-    the bulk of the per-run request volume on its own quota bucket.
+    reasoning over already-gathered context; routed to gemini-3.1-flash-lite,
+    which carries the bulk of the per-run request volume on its own quota bucket.
+
+NB (probed Jun 2026): the free daily allowance is ~20 requests/day/key/model
+(resets 00:00 Pacific). Routing every tier to ONE model collapses the two buckets
+into one and exhausts it twice as fast — keep the two models distinct on free tier.
+
+CAPACITY OVERLOAD (503 / "overloaded" / UNAVAILABLE)
+----------------------------------------------------
+A 503 is transient server load on a model. The LLM wrapper rotates to the next KEY
+immediately (a different key's backend often serves the same model fine during a
+spike), and only falls back to exponential backoff once the key pool is exhausted.
 """
 
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -48,16 +59,29 @@ DEFAULT_RESEARCH_MODEL  = "gemini-2.5-flash-lite"
 DEFAULT_REASONING_MODEL = "gemini-3.1-flash-lite"
 DEFAULT_JUDGE_MODEL     = "gemini-3.1-flash-lite"
 
+# Optional capacity-fallback chain for 503/"overloaded" errors (comma/space/newline
+# separated). Empty by default; on a 503 the wrapper rotates KEYS instead. Override
+# via FIFA_FALLBACK_MODELS if you want a second model as a separate capacity pool.
+DEFAULT_FALLBACK_MODELS = ""
+
 
 @dataclass
 class Settings:
     """Infrastructure / environment configuration."""
 
     gemini_api_key: Optional[str] = None
+    # Ordered failover pool. The LLM wrapper rotates to the next key on an
+    # auth/quota error (401/403/429). Populated from GEMINI_API_KEY +
+    # GEMINI_API_KEYS by from_env(); gemini_api_key stays the primary (first).
+    gemini_api_keys: list = field(default_factory=list)
 
     research_model:  str = DEFAULT_RESEARCH_MODEL
     reasoning_model: str = DEFAULT_REASONING_MODEL
     judge_model:     str = DEFAULT_JUDGE_MODEL
+
+    # Ordered capacity-fallback chain shared by all tiers (each tier skips its own
+    # primary). Tried, in order, only on a 503/overload error. See module docstring.
+    fallback_models: list = field(default_factory=list)
 
     max_web_searches:  int  = 6
     max_output_tokens: int  = 10000
@@ -67,9 +91,10 @@ class Settings:
     # Chaos engine (modelled as a single-run probability-weighted mixture).
     # `chaos_base_probability` is P(some black-swan occurs); set to 0.0 for a
     # clean baseline. The per-event weights and multipliers live in math_engine.
-    chaos_base_probability: float = 0.22
+    chaos_base_probability: float = 0.3
 
-    # Scoreline grid spans 0-0 .. max_goals-max_goals.
+    # Scoreline grid spans 0-0 .. max_goals-max_goals. 7 keeps the grid wide
+    # enough that high-lambda favourites (xG ~3) aren't truncated.
     max_goals: int = 7
 
     @classmethod
@@ -78,15 +103,36 @@ class Settings:
             v = os.getenv(name)
             return default if v is None else v.strip().lower() in {"1", "true", "yes", "on"}
 
+        # Build the ordered key failover pool from both env vars:
+        #   GEMINI_API_KEY   — the single primary key (kept for back-compat)
+        #   GEMINI_API_KEYS  — comma/whitespace/newline-separated extra keys
+        # The primary goes first; duplicates are dropped, order preserved.
+        pool: list[str] = []
+        for raw in [os.getenv("GEMINI_API_KEY", "")] + \
+                   re.split(r"[,\s]+", os.getenv("GEMINI_API_KEYS", "") or ""):
+            k = (raw or "").strip()
+            if k and k not in pool:
+                pool.append(k)
+
+        # Capacity-fallback chain: split on comma/space/newline, drop blanks,
+        # de-duplicate while preserving order.
+        fallbacks: list[str] = []
+        for raw in re.split(r"[,\s]+", os.getenv("FIFA_FALLBACK_MODELS", DEFAULT_FALLBACK_MODELS) or ""):
+            m = (raw or "").strip()
+            if m and m not in fallbacks:
+                fallbacks.append(m)
+
         return cls(
-            gemini_api_key   = os.getenv("GEMINI_API_KEY"),
+            gemini_api_key   = pool[0] if pool else None,
+            gemini_api_keys  = pool,
             research_model   = os.getenv("FIFA_RESEARCH_MODEL",  DEFAULT_RESEARCH_MODEL),
             reasoning_model  = os.getenv("FIFA_REASONING_MODEL", DEFAULT_REASONING_MODEL),
             judge_model      = os.getenv("FIFA_JUDGE_MODEL",     DEFAULT_JUDGE_MODEL),
+            fallback_models  = fallbacks,
             max_web_searches = int(os.getenv("FIFA_MAX_SEARCHES", "6")),
             max_output_tokens= int(os.getenv("FIFA_MAX_TOKENS",   "10000")),
             odds_api_key     = os.getenv("ODDS_API_KEY"),
-            chaos_base_probability = float(os.getenv("FIFA_CHAOS_PROB", "0.22")),
+            chaos_base_probability = float(os.getenv("FIFA_CHAOS_PROB", "0.3")),
             max_goals        = int(os.getenv("FIFA_MAX_GOALS", "7")),
         )
 
@@ -129,6 +175,13 @@ class TeamScenario:
     is_host_nation:        bool  = False  # USA, Canada, Mexico
     notes:                 str   = ""     # optional manual context (coach can override)
     chaos_profile:         dict  = field(default_factory=dict)  # per-match black-swan rates
+    # Intra-tournament momentum, computed deterministically from ACTUAL results.json
+    # (MD1 onward). 1.0 at MD1; >1.0 after strong results, <1.0 after poor ones.
+    tournament_momentum:   float = 1.0
+    tournament_form_summary: str = ""     # e.g. "MD1: W 2-0 vs South Africa"
+    tournament_results:    list  = field(default_factory=list)  # structured WC matches played
+    # Manual, tunable under/over-rating factor for dark horses (1.0 = neutral).
+    dark_horse_factor:     float = 1.0
 
 
 @dataclass
