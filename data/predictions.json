@@ -2435,7 +2435,7 @@
     "group": "D",
     "md": 1,
     "home": "Australia",
-    "away": "TÃ¼rkiye",
+    "away": "Türkiye",
     "prob_home_win": 33,
     "prob_draw": 25,
     "prob_away_win": 41,
@@ -2443,7 +2443,7 @@
       "home": 1.25,
       "away": 1.42
     },
-    "predicted_scoreline": "Australia 1-1 TÃ¼rkiye",
+    "predicted_scoreline": "Australia 1-1 Türkiye",
     "top_scorelines": [
       {
         "score": "1-1",
@@ -2546,9 +2546,9 @@
       ]
     ],
     "confidence": "low",
-    "headline": "TÃ¼rkiye enters as the statistical favorite in a high-transition tactical clash.",
-    "narrative": "The match projects as a volatile, high-pressing battle where the aggressive tactical alignment of both teams will inevitably lead to defensive ruptures. While TÃ¼rkiye possesses a higher technical ceiling to convert transition opportunities, Australia's home-slot advantage and structural discipline create a resilient baseline that the market currently undervalues. The game is likely to be defined by which side handles the inherent midfield instability more efficiently without conceding high-value set pieces.",
-    "model_vs_market": "The model identifies significant value on Australia, suggesting the betting market has overestimated TÃ¼rkiye's win probability by 16% due to an over-reliance on perceived technical superiority.",
+    "headline": "Türkiye enters as the statistical favorite in a high-transition tactical clash.",
+    "narrative": "The match projects as a volatile, high-pressing battle where the aggressive tactical alignment of both teams will inevitably lead to defensive ruptures. While Türkiye possesses a higher technical ceiling to convert transition opportunities, Australia's home-slot advantage and structural discipline create a resilient baseline that the market currently undervalues. The game is likely to be defined by which side handles the inherent midfield instability more efficiently without conceding high-value set pieces.",
+    "model_vs_market": "The model identifies significant value on Australia, suggesting the betting market has overestimated Türkiye's win probability by 16% due to an over-reliance on perceived technical superiority.",
     "updated_at": "2026-06-13T21:27:43"
   },
   "D3": {
@@ -2687,7 +2687,7 @@
     "fixture_id": "D4",
     "group": "D",
     "md": 2,
-    "home": "TÃ¼rkiye",
+    "home": "Türkiye",
     "away": "Paraguay",
     "prob_home_win": 54,
     "prob_draw": 20,
@@ -2696,7 +2696,7 @@
       "home": 2.11,
       "away": 1.38
     },
-    "predicted_scoreline": "TÃ¼rkiye 2-1 Paraguay",
+    "predicted_scoreline": "Türkiye 2-1 Paraguay",
     "top_scorelines": [
       {
         "score": "2-1",
@@ -2712,7 +2712,7 @@
       }
     ],
     "top_outcome": {
-      "team": "TÃ¼rkiye",
+      "team": "Türkiye",
       "score": "3-1",
       "prob": 7
     },
@@ -2799,9 +2799,9 @@
       ]
     ],
     "confidence": "high",
-    "headline": "TÃ¼rkiye leverages superior offensive output to secure a high-probability home victory over Paraguay.",
-    "narrative": "TÃ¼rkiye's high-press system is poised to exploit Paraguay's defensive lapses in a match dictated by end-to-end transitions. With a robust expected goals baseline of 2.11, the home side maintains a clear qualitative advantage that translates into a multi-goal scoring expectation. The tactical collision between these two aggressive sides favors the higher-quality attacking unit, making high-scoring outcomes like 2-1 or 3-1 statistically prevalent.",
-    "model_vs_market": "The model identifies a significant 5% edge on TÃ¼rkiye compared to market consensus, reflecting a more bullish outlook on their ability to convert chances despite the market's tendency to price in a higher probability of a draw.",
+    "headline": "Türkiye leverages superior offensive output to secure a high-probability home victory over Paraguay.",
+    "narrative": "Türkiye's high-press system is poised to exploit Paraguay's defensive lapses in a match dictated by end-to-end transitions. With a robust expected goals baseline of 2.11, the home side maintains a clear qualitative advantage that translates into a multi-goal scoring expectation. The tactical collision between these two aggressive sides favors the higher-quality attacking unit, making high-scoring outcomes like 2-1 or 3-1 statistically prevalent.",
+    "model_vs_market": "The model identifies a significant 5% edge on Türkiye compared to market consensus, reflecting a more bullish outlook on their ability to convert chances despite the market's tendency to price in a higher probability of a draw.",
     "market_probs": {
       "implied_home_win": 0.49,
       "implied_draw": 0.272,
@@ -2819,7 +2819,7 @@
     "fixture_id": "D5",
     "group": "D",
     "md": 3,
-    "home": "TÃ¼rkiye",
+    "home": "Türkiye",
     "away": "United States",
     "prob_home_win": 10,
     "prob_draw": 16,
@@ -2828,7 +2828,7 @@
       "home": 0.71,
       "away": 2.45
     },
-    "predicted_scoreline": "TÃ¼rkiye 0-2 United States",
+    "predicted_scoreline": "Türkiye 0-2 United States",
     "top_scorelines": [
       {
         "score": "0-2",
@@ -2932,8 +2932,8 @@
     ],
     "confidence": "high",
     "headline": "United States heavily favored to defeat T\\",
-    "narrative": "Baseline xG (pre-chaos): TÃ¼rkiye 0.7141 vs United States 2.4501; chaos folded into the grid below. 10%/16%/75% W/D/L. Turkey's possession-based 4-2-3-1 will struggle to break down the US's aggressive high press and quick transitions, while the US's high line invites direct balls that Turkey may struggle to exploit effectively.",
-    "model_vs_market": "Model gives TÃ¼rkiye 10% vs market 23% (edge -14%); draw 16% vs 24%; United States 75% vs 52%.",
+    "narrative": "Baseline xG (pre-chaos): Türkiye 0.7141 vs United States 2.4501; chaos folded into the grid below. 10%/16%/75% W/D/L. Turkey's possession-based 4-2-3-1 will struggle to break down the US's aggressive high press and quick transitions, while the US's high line invites direct balls that Turkey may struggle to exploit effectively.",
+    "model_vs_market": "Model gives Türkiye 10% vs market 23% (edge -14%); draw 16% vs 24%; United States 75% vs 52%.",
     "market_probs": {
       "implied_home_win": 0.233,
       "implied_draw": 0.244,
@@ -3084,7 +3084,7 @@
     "group": "E",
     "md": 1,
     "home": "Germany",
-    "away": "CuraÃ§ao",
+    "away": "Curaçao",
     "prob_home_win": 85,
     "prob_draw": 12,
     "prob_away_win": 4,
@@ -3092,7 +3092,7 @@
       "home": 2.65,
       "away": 0.3
     },
-    "predicted_scoreline": "Germany 2-0 CuraÃ§ao",
+    "predicted_scoreline": "Germany 2-0 Curaçao",
     "top_scorelines": [
       {
         "score": "2-0",
@@ -3150,9 +3150,9 @@
       ]
     ],
     "confidence": "high",
-    "headline": "Germany win most likely (Germany 2-0 CuraÃ§ao).",
-    "narrative": "Baseline xG (pre-chaos): Germany 2.65 vs CuraÃ§ao 0.3; chaos folded into the grid below. 85%/12%/4% W/D/L. Germany's aggressive high-press against a compact low-block will likely lead to sustained territorial dominance, though Curaçao's 5-4-1 structure is specifically designed to minimize high-quality scoring opportunities.",
-    "model_vs_market": "Model gives Germany 85% vs market 97% (edge -12%); draw 12% vs 3%; CuraÃ§ao 4% vs 0%.",
+    "headline": "Germany win most likely (Germany 2-0 Curaçao).",
+    "narrative": "Baseline xG (pre-chaos): Germany 2.65 vs Curaçao 0.3; chaos folded into the grid below. 85%/12%/4% W/D/L. Germany's aggressive high-press against a compact low-block will likely lead to sustained territorial dominance, though Curaçao's 5-4-1 structure is specifically designed to minimize high-quality scoring opportunities.",
+    "model_vs_market": "Model gives Germany 85% vs market 97% (edge -12%); draw 12% vs 3%; Curaçao 4% vs 0%.",
     "updated_at": "2026-06-14T21:24:19"
   },
   "E2": {
@@ -3367,7 +3367,7 @@
     "fixture_id": "E4",
     "group": "E",
     "md": 2,
-    "home": "CuraÃ§ao",
+    "home": "Curaçao",
     "away": "Ecuador",
     "prob_home_win": 5,
     "prob_draw": 11,
@@ -3376,7 +3376,7 @@
       "home": 0.48,
       "away": 2.77
     },
-    "predicted_scoreline": "CuraÃ§ao 0-2 Ecuador",
+    "predicted_scoreline": "Curaçao 0-2 Ecuador",
     "top_scorelines": [
       {
         "score": "0-2",
@@ -3631,7 +3631,7 @@
     "fixture_id": "E6",
     "group": "E",
     "md": 3,
-    "home": "CuraÃ§ao",
+    "home": "Curaçao",
     "away": "Ivory Coast",
     "prob_home_win": 7,
     "prob_draw": 15,
@@ -3640,7 +3640,7 @@
       "home": 0.5,
       "away": 2.33
     },
-    "predicted_scoreline": "CuraÃ§ao 0-2 Ivory Coast",
+    "predicted_scoreline": "Curaçao 0-2 Ivory Coast",
     "top_scorelines": [
       {
         "score": "0-2",

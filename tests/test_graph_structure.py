@@ -7,7 +7,7 @@ an injected stub (FakeLLM) that returns schema defaults, exactly as the graph
 expects. All maths (fitness, ELO anchor, Poisson, chaos mixture) runs for real.
 
 Verifies:
-- Graph compiles with the expected nodes and NO chaos-loop nodes
+- Graph compiles with the expected nodes
 - End-to-end pipeline reaches the Judge with a full mixture Poisson grid
 - The fan-in at pitch_simulator fires exactly once (balanced chains)
 - Chaos is weighted into a single run (not sampled) and shifts the distribution
@@ -16,7 +16,7 @@ Verifies:
 """
 
 from fifa_predictor.agents._helpers import _PUBLIC_FORM_FIELDS, public_opponent_view
-from fifa_predictor.config import MatchScenario, Settings, default_portugal_france_scenario
+from fifa_predictor.config import MatchScenario, Settings, demo_scenario
 from fifa_predictor.graph import build_graph, run_prediction
 
 
@@ -28,7 +28,7 @@ class FakeLLM:
     def structured(self, schema, system, user, context=""):
         return schema()
 
-    def research(self, system, user, max_searches=6):
+    def research(self, system, user):
         return ""
 
 
@@ -42,7 +42,7 @@ def _settings(chaos_prob: float = 0.22) -> Settings:
 
 
 def _scenario() -> MatchScenario:
-    return default_portugal_france_scenario()
+    return demo_scenario()
 
 
 def _run(chaos_prob: float = 0.22) -> dict:
@@ -63,13 +63,6 @@ def test_graph_compiles_with_all_nodes():
         "alchemist_b", "strategist_b", "scout_b", "tactician_b",
     }
     assert expected.issubset(nodes)
-
-
-def test_graph_has_no_chaos_loop_nodes():
-    app = build_graph(_settings(), llms=_fake_llms())
-    nodes = set(app.get_graph().nodes.keys())
-    for dead in ("chaos_readapt_tactician", "chaos_readapt_alchemist", "pitch_recalc"):
-        assert dead not in nodes
 
 
 # ---------------------------------------------------------------------------
@@ -94,7 +87,7 @@ def test_poisson_output_is_full_grid():
 def test_team_names_never_unknown():
     pitch = _run().get("pitch", {})
     assert pitch.get("team_a", {}).get("name") == "Portugal"
-    assert pitch.get("team_b", {}).get("name") == "France"
+    assert pitch.get("team_b", {}).get("name") == "Colombia"
 
 
 def test_pitch_simulator_fires_exactly_once():
@@ -110,7 +103,8 @@ def test_chaos_is_weighted_scenario_set():
     chaos = _run().get("chaos", {})
     scenarios = chaos.get("scenarios", [])
     assert len(scenarios) > 1                       # baseline + events
-    assert abs(sum(s["probability"] for s in scenarios) - 1.0) < 1e-6
+    # each weight is rounded to 6 dp, so allow rounding slack (the mixture renormalises)
+    assert abs(sum(s["probability"] for s in scenarios) - 1.0) < 1e-5
     assert chaos.get("summary")
 
 
@@ -169,7 +163,9 @@ def test_physiologist_factor_differs_by_travel_and_rest():
     final = _run(chaos_prob=0.0)
     a_fit = final["teams"]["A"]["fitness"]["fitness_degradation_factor"]
     b_fit = final["teams"]["B"]["fitness"]["fitness_degradation_factor"]
-    assert a_fit < b_fit   # Portugal travelled (Atlanta->Vancouver); France stayed put
+    # Colombia came further (Boston->New York vs Portugal's Philadelphia->New York)
+    # and from a cooler, drier home climate, so it carries the bigger penalty.
+    assert b_fit < a_fit
 
 
 # ---------------------------------------------------------------------------
@@ -180,19 +176,6 @@ def test_strategist_intensity_within_valid_range():
     for key in ("A", "B"):
         v = final["teams"][key]["strategy"]["strategic_intensity_multiplier"]
         assert 0.78 <= v <= 1.14, f"Team {key} intensity {v} outside valid range"
-
-
-# ---------------------------------------------------------------------------
-# ELO derivation
-# ---------------------------------------------------------------------------
-def test_elo_base_lambda_ordering():
-    from fifa_predictor.math_engine import elo_base_lambda
-    assert elo_base_lambda(1876, 1500) > elo_base_lambda(1500, 1876)
-
-
-def test_elo_base_lambda_equal_teams():
-    from fifa_predictor.math_engine import elo_base_lambda
-    assert abs(elo_base_lambda(1700, 1700, tournament_avg=1.35) - 1.35) < 0.01
 
 
 # ---------------------------------------------------------------------------
@@ -217,6 +200,84 @@ def test_match_runner_builds_scenario_from_data():
     assert scenario.team_a.elo  == float(ratings["Portugal"]["elo"])
     assert scenario.team_b.elo  == float(ratings["Colombia"]["elo"])
     assert scenario.team_a.group == "K"
+
+
+def test_demo_scenario_matches_data_driven_fixture():
+    """The CLI demo is a static snapshot of K5 — it must equal what the runner
+    derives from the data files, so the two entry points never disagree."""
+    import dataclasses
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from match_runner import (build_scenario, load_dark_horses, load_fixtures,
+                              load_ratings, load_results, resolve_bracket)
+
+    results  = load_results()
+    fixtures = resolve_bracket(load_fixtures(), results)
+    k5 = next(f for f in fixtures if f["id"] == "K5")
+    built = build_scenario(k5, load_ratings(), fixtures, results, load_dark_horses())
+    assert dataclasses.asdict(built) == dataclasses.asdict(_scenario())
+
+
+def _runner():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import match_runner
+    return match_runner
+
+
+def test_group_ranking_puts_head_to_head_before_goal_difference():
+    rank_group = _runner().rank_group
+    # A and B finish on 6 points; A has the far better goal difference, but B
+    # won the meeting between them, so FIFA Article 13 ranks B first.
+    matches = [("A", 5, "C", 0), ("A", 5, "D", 0), ("B", 1, "A", 0),
+               ("B", 1, "C", 0), ("D", 1, "B", 0), ("C", 0, "D", 0)]
+    assert rank_group({"A", "B", "C", "D"}, matches) == ["B", "A", "D", "C"]
+
+
+def test_group_ranking_falls_back_to_world_ranking():
+    rank_group = _runner().rank_group
+    # Every match 1-1: head-to-head, goal difference and goals scored all tie,
+    # so the FIFA world ranking decides.
+    teams = ["A", "B", "C", "D"]
+    matches = [(h, 1, a, 1) for i, h in enumerate(teams) for a in teams[i + 1:]]
+    ratings = {"A": {"fifa_rank": 10}, "B": {"fifa_rank": 2},
+               "C": {"fifa_rank": 30}, "D": {"fifa_rank": 5}}
+    assert rank_group(set(teams), matches, ratings) == ["B", "D", "A", "C"]
+
+
+def test_unfinished_group_leaves_its_slots_unresolved():
+    mr = _runner()
+    results = mr.load_results()
+    fixtures = mr.load_fixtures()
+    partial = {k: v for k, v in results.items() if k not in ("K5", "K6")}
+    slots = mr._group_place_map(fixtures, partial)
+    assert "1K" not in slots and "1A" in slots
+
+
+def test_knockout_briefs_use_the_round_not_a_group():
+    import dataclasses
+    from fifa_predictor.agents.common.researcher import _research_prompt, _wc_result_strings
+    mr = _runner()
+    results = mr.load_results()
+    fixtures = mr.resolve_bracket(mr.load_fixtures(), results)
+    m89 = next(f for f in fixtures if f["id"] == "M89")
+    scn = dataclasses.asdict(mr.build_scenario(m89, mr.load_ratings(), fixtures, results))
+    assert scn["knockout_round"] == "R16" and scn["stage"] == "Round of 16"
+    assert scn["team_a"]["group"] == "D"            # Paraguay's real group
+    brief = _research_prompt(scn, "", "", "", "")
+    assert "Round of 16" in brief and "KNOCKOUT CONTEXT" in brief
+    assert "Group R16" not in brief and "GROUP STANDINGS" not in brief
+    assert any(s.endswith("(WC R32)") for s in _wc_result_strings(scn["team_a"]))
+
+
+def test_bracket_resolves_to_the_actual_final():
+    mr = _runner()
+    resolved = {f["id"]: f for f in mr.resolve_bracket(mr.load_fixtures(), mr.load_results(),
+                                                       mr.load_ratings())}
+    assert (resolved["M77"]["home"], resolved["M77"]["away"]) == ("France", "Sweden")
+    assert (resolved["M104"]["home"], resolved["M104"]["away"]) == ("Spain", "Argentina")
 
 
 def test_city_alias_resolution():

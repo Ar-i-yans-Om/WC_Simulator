@@ -4,14 +4,15 @@ match_runner.py
 
 Central driver for the FIFA World Cup 2026 Prediction Engine.
 
-Place at the PROJECT ROOT (same level as requirements.txt):
+Lives at the repository root (same level as requirements.txt):
 
-    fifa_predictor/
+    WC_Simulator/
     ├── match_runner.py        ← run this
     ├── data/
-    │   ├── fixtures.json      ← official match schedule (from FIFA/ESPN)
-    │   ├── team_ratings.json  ← ELO ratings + FIFA rankings per team
+    │   ├── fixtures.json      ← official match schedule (104 matches)
+    │   ├── team_ratings.json  ← ELO ratings, FIFA ranks, chaos profiles per team
     │   ├── results.json       ← fill in scores as matches are played
+    │   ├── players.json       ← registered 26-man squads (read by the Researcher)
     │   └── predictions.json   ← WRITTEN by this runner; read by the dashboard
     ├── fifa_predictor/
     └── requirements.txt
@@ -21,7 +22,8 @@ HOW THE DATA PIPELINE WORKS
 1. fixtures.json provides the schedule: who plays who, where, and when.
 2. team_ratings.json provides ELO and FIFA rank per team (the strength signal).
 3. results.json tracks match scores as the tournament progresses — the runner
-   computes group standings from these to determine each team's points.
+   computes group standings from these to determine each team's points, and
+   resolves the knockout bracket (who fills each R32 slot, who advances).
 4. From the schedule the runner derives:
    - rest_days: date difference between a team's matches
    - host_city_last_match: the city of their previous fixture
@@ -43,10 +45,12 @@ USAGE
   python match_runner.py --fixture K5 K6 L1          # several fixtures by ID
   python match_runner.py --group K                   # all fixtures in a group
   python match_runner.py --md 3                      # all matchday 3 fixtures
+  python match_runner.py --round R16                 # a knockout round (R32/R16/QF/SF/3P/F)
   python match_runner.py --no-chaos                  # disable weighted chaos
   python match_runner.py --all                       # including already-played
-  python match_runner.py --hardcoded                 # use HARDCODED_FIXTURES below
+  python match_runner.py --rerun-degraded            # re-run fixtures whose last run degraded
   python match_runner.py --no-write                  # don't update predictions.json
+  python match_runner.py --verbose                   # DEBUG-level agent logs
 """
 
 from __future__ import annotations
@@ -57,7 +61,7 @@ import re
 import sys
 import time
 from collections import defaultdict
-from datetime import datetime, date
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -91,8 +95,8 @@ ROUND_LABELS = {
     "R32": "Round of 32", "R16": "Round of 16", "QF": "Quarter-final",
     "SF": "Semi-final",   "3P": "Third-place play-off", "F": "Final",
 }
-# Pseudo-matchday per round (keeps a monotonic "how deep in the tournament"
-# signal for the agents; group stage is 1-3, knockouts continue from 4).
+# A team's Nth match of the tournament: group games are 1-3, so the knockout
+# rounds continue from 4 (the third-place play-off and the Final are both 8).
 ROUND_MATCHDAY = {"R32": 4, "R16": 5, "QF": 6, "SF": 7, "3P": 8, "F": 8}
 
 _GROUP_SLOT_RE = re.compile(r"^([123])([A-L])$")
@@ -109,31 +113,13 @@ def looks_like_slot(s: str) -> bool:
 
 
 # ===========================================================================
-# HARDCODED_FIXTURES
-# Edit this list to run quick one-off tests without touching the JSON files.
-# ===========================================================================
-HARDCODED_FIXTURES = [
-    {
-        "id": "TEST_POR_FRA",
-        "group": "TEST",
-        "md": 3,
-        "home": "Portugal",
-        "away": "France",
-        "date": "2026-06-27",
-        "venue": "BC Place",
-        "city": "Vancouver",
-    },
-]
-
-
-# ===========================================================================
 # Data loading
 # ===========================================================================
 def load_json(path: Path, label: str) -> dict | list:
     if not path.exists():
         print(f"[WARN] {path.name} not found — {label} will use defaults.")
         return {}
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:   # team names include ç / ü
         return json.load(f)
 
 
@@ -177,45 +163,104 @@ def load_dark_horses() -> dict:
 # ===========================================================================
 # Knockout bracket resolution
 # ===========================================================================
-def _group_place_map(fixtures: list[dict], results: dict) -> dict:
-    """
-    Compute the finishing position of every team within its group and return a
-    slot map { "1A": <winner of A>, "2A": <runner-up>, "3A": <third>, ... }.
+def _mini_table(teams, matches) -> dict:
+    """{team: [points, goal difference, goals scored]} over the given matches,
+    counting only matches played between two of `teams`."""
+    table = {t: [0, 0, 0] for t in teams}
+    for home, hg, away, ag in matches:
+        if home in table and away in table:
+            table[home][0] += 3 if hg > ag else (1 if hg == ag else 0)
+            table[away][0] += 3 if ag > hg else (1 if hg == ag else 0)
+            table[home][1] += hg - ag
+            table[away][1] += ag - hg
+            table[home][2] += hg
+            table[away][2] += ag
+    return table
 
-    Uses ONLY group-stage fixtures (those without a "round" key). Tie-breaking:
-    points, then goal difference, then goals for — the same order the dashboard
-    and FIFA regulations use for the first three criteria.
+
+def rank_group(teams, matches, ratings: dict | None = None) -> list[str]:
     """
-    tables: dict[str, dict] = defaultdict(lambda: defaultdict(
-        lambda: {"pts": 0, "gf": 0, "ga": 0}))
+    Rank one group per FIFA World Cup 26 Regulations, Article 13.
+
+    `matches` is a list of (home, home_goals, away, away_goals). Teams level on
+    points are separated by:
+      step 1  a) head-to-head points, b) head-to-head goal difference,
+              c) head-to-head goals scored — among the teams concerned;
+      step 2  a)-c) re-applied to any teams still level, then d) overall goal
+              difference, e) overall goals scored (f, team conduct, is skipped:
+              cards are not tracked);
+      step 3  g) the FIFA/Coca-Cola Men's World Ranking (`fifa_rank` in ratings).
+    """
+    ratings = ratings or {}
+    teams = sorted(teams)
+    overall = _mini_table(teams, matches)
+
+    def fifa_rank(team):
+        return ratings.get(team, {}).get("fifa_rank", 999)
+
+    def settle(level):                       # teams level on overall points
+        if len(level) == 1:
+            return level
+        h2h = _mini_table(level, matches)
+        ordered = []
+        for key in sorted({tuple(h2h[t]) for t in level}, reverse=True):
+            tied = [t for t in level if tuple(h2h[t]) == key]
+            if len(tied) == 1:
+                ordered += tied
+            elif len(tied) < len(level):
+                ordered += settle(tied)      # re-apply a)-c) to the remaining teams only
+            else:                            # head-to-head cannot separate them
+                ordered += sorted(tied, key=lambda t: (-overall[t][1], -overall[t][2],
+                                                       fifa_rank(t), t))
+        return ordered
+
+    ranking = []
+    for pts in sorted({overall[t][0] for t in teams}, reverse=True):
+        ranking += settle([t for t in teams if overall[t][0] == pts])
+    return ranking
+
+
+def _group_place_map(fixtures: list[dict], results: dict,
+                     ratings: dict | None = None) -> dict:
+    """
+    Slot map { "1A": <winner of A>, "2A": <runner-up>, "3A": <third>, ... } for
+    every group whose six matches have all been played (an unfinished group's
+    slots stay unresolved). Uses ONLY group-stage fixtures (no "round" key) and
+    ranks with rank_group(). The R32 third-place slots are fixed in
+    fixtures.json, so the best-thirds ranking never has to be computed here.
+    """
+    members: dict[str, set] = defaultdict(set)
+    scheduled: dict[str, int] = defaultdict(int)
+    played: dict[str, list] = defaultdict(list)
     for fx in fixtures:
         if is_knockout(fx):
             continue
+        g = fx.get("group", "")
+        members[g].update((fx["home"], fx["away"]))
+        scheduled[g] += 1
         r = results.get(fx["id"])
         if not r or not r.get("played"):
             continue
         hs, as_ = r.get("home_score"), r.get("away_score")
         if hs is None or as_ is None:
             continue
-        hs, as_ = int(hs), int(as_)
-        g = fx.get("group", "")
-        for name, gf, ga in [(fx["home"], hs, as_), (fx["away"], as_, hs)]:
-            s = tables[g][name]
-            s["gf"] += gf
-            s["ga"] += ga
-            s["pts"] += 3 if gf > ga else (1 if gf == ga else 0)
+        played[g].append((fx["home"], int(hs), fx["away"], int(as_)))
 
     slot_map: dict[str, str] = {}
-    for g, teams in tables.items():
-        ordered = sorted(
-            teams.items(),
-            key=lambda kv: (-kv[1]["pts"],
-                            -(kv[1]["gf"] - kv[1]["ga"]),
-                            -kv[1]["gf"]),
-        )
-        for i, (name, _) in enumerate(ordered):
+    for g, teams in members.items():
+        if len(played[g]) < scheduled[g]:
+            continue
+        for i, name in enumerate(rank_group(teams, played[g], ratings)):
             slot_map[f"{i + 1}{g}"] = name
     return slot_map
+
+
+def group_of(team: str, fixtures: list[dict]) -> str:
+    """The group letter `team` played its group matches in ("" if unknown)."""
+    for fx in fixtures:
+        if not is_knockout(fx) and team in (fx["home"], fx["away"]):
+            return fx.get("group", "")
+    return ""
 
 
 def _match_winner_loser(fx: dict, results: dict) -> tuple[Optional[str], Optional[str]]:
@@ -248,20 +293,21 @@ def _match_winner_loser(fx: dict, results: dict) -> tuple[Optional[str], Optiona
     return None, None
 
 
-def resolve_bracket(fixtures: list[dict], results: dict) -> list[dict]:
+def resolve_bracket(fixtures: list[dict], results: dict,
+                    ratings: dict | None = None) -> list[dict]:
     """
     Return a copy of `fixtures` where every knockout fixture's slot references
     (home/away) are replaced by concrete team names wherever they can be derived
-    from results.json. Group slots (1A/2B/3E) resolve from final group standings;
+    from results.json. Group slots (1A/2B/3E) resolve from final group standings
+    (ranked per FIFA Article 13, using `ratings` for the world-ranking criterion);
     match slots (W77/L101) resolve once the feeding tie has a decided result.
 
     Fixtures are processed in match-number order so a round's winners are known
     before the next round that consumes them. Slots that cannot be resolved yet
     are left untouched (that tie simply isn't runnable until its feeders finish).
     """
-    slot_map = _group_place_map(fixtures, results)
+    slot_map = _group_place_map(fixtures, results, ratings)
     resolved = [dict(fx) for fx in fixtures]
-    by_id = {fx["id"]: fx for fx in resolved}
 
     ko = sorted((fx for fx in resolved if is_knockout(fx)),
                 key=lambda f: f.get("match_no", 0))
@@ -282,49 +328,8 @@ def resolve_bracket(fixtures: list[dict], results: dict) -> list[dict]:
 
 
 # ===========================================================================
-# Group standings computation
+# Group points before a fixture
 # ===========================================================================
-def compute_standings(fixtures: list[dict], results: dict) -> dict:
-    """
-    Compute group standings from played results.
-
-    Returns: { team_name: {"points": int, "gf": int, "ga": int, "gd": int,
-                           "played": int, "won": int, "drawn": int, "lost": int} }
-    """
-    standings = defaultdict(lambda: {"points": 0, "gf": 0, "ga": 0,
-                                     "gd": 0, "played": 0, "won": 0,
-                                     "drawn": 0, "lost": 0, "group": ""})
-
-    for fx in fixtures:
-        r = results.get(fx["id"])
-        if not r or not r.get("played"):
-            continue
-        home, away = fx["home"], fx["away"]
-        hs, as_ = r.get("home_score"), r.get("away_score")
-        if hs is None or as_ is None:
-            continue
-        hs, as_ = int(hs), int(as_)
-        group = fx.get("group", "")
-
-        for name, scored, conceded in [(home, hs, as_), (away, as_, hs)]:
-            s = standings[name]
-            s["group"]  = group
-            s["played"] += 1
-            s["gf"]     += scored
-            s["ga"]     += conceded
-            s["gd"]      = s["gf"] - s["ga"]
-            if scored > conceded:
-                s["points"] += 3
-                s["won"]    += 1
-            elif scored == conceded:
-                s["points"] += 1
-                s["drawn"]  += 1
-            else:
-                s["lost"]   += 1
-
-    return dict(standings)
-
-
 def points_before(team: str, fixture_id: str, fixtures: list[dict],
                   results: dict) -> int:
     """Points accumulated by `team` in matches played BEFORE `fixture_id`."""
@@ -480,18 +485,11 @@ def build_scenario(fixture: dict, ratings: dict, fixtures: list[dict],
     knockout  = is_knockout(fixture)
     rnd       = fixture.get("round", "")
     if knockout:
-        group    = rnd                          # e.g. "R16" (shown in briefings)
-        matchday = ROUND_MATCHDAY.get(rnd, 4)    # pseudo-MD continuing from group stage
+        matchday = ROUND_MATCHDAY.get(rnd, 4)
         stage    = ROUND_LABELS.get(rnd, "Knockout")
-        # Single-elimination directive for the Strategist (no rotation maths here).
-        ko_notes = (f"{stage}: single-elimination knockout — win or the tournament "
-                    "is over. There is no group table and no rotation calculus; "
-                    "every match is must-win.")
     else:
-        group    = fixture.get("group", "?")
         matchday = fixture.get("md", 1)
-        stage    = f"Group {group} — Matchday {matchday}"
-        ko_notes = ""
+        stage    = f"Group {fixture.get('group', '?')} — Matchday {matchday}"
 
     def _build_team(name: str) -> TeamScenario:
         r       = ratings.get(name, {})
@@ -504,7 +502,7 @@ def build_scenario(fixture: dict, ratings: dict, fixtures: list[dict],
         return TeamScenario(
             name                 = name,
             matchday             = matchday,
-            group                = group,
+            group                = group_of(name, fixtures),
             date                 = date_str,
             group_points         = pts,
             host_city_this_match = city_now,
@@ -519,7 +517,6 @@ def build_scenario(fixture: dict, ratings: dict, fixtures: list[dict],
             tournament_form_summary = tform["summary"],
             tournament_results      = tform["results"],
             dark_horse_factor       = float(dark_horses.get(name, 1.0)),
-            notes                   = ko_notes,
         )
 
     return MatchScenario(
@@ -527,6 +524,7 @@ def build_scenario(fixture: dict, ratings: dict, fixtures: list[dict],
         team_b             = _build_team(away_name),
         competition        = "FIFA World Cup 2026",
         stage              = stage,
+        knockout_round     = rnd,
         tournament_avg_goals = 1.35,
     )
 
@@ -548,8 +546,8 @@ def print_result(fixture: dict, scenario: MatchScenario, final: dict) -> None:
     a, b    = scenario.team_a.name, scenario.team_b.name
 
     fid = fixture["id"]
-    md = scenario.team_a.matchday
-    print(f"\n{_rule(f'{a} vs {b}  [MD{md} · {fid}]')}")
+    stage_lbl = fixture["round"] if is_knockout(fixture) else f"MD{fixture.get('md', '?')}"
+    print(f"\n{_rule(f'{a} vs {b}  [{stage_lbl} · {fid}]')}")
     print(f"  {report.get('headline', '(no headline)')}")
     print(f"  Scoreline : {report.get('predicted_scoreline', 'n/a')}")
     print(f"  Confidence: {report.get('confidence', 'n/a')}")
@@ -561,8 +559,8 @@ def print_result(fixture: dict, scenario: MatchScenario, final: dict) -> None:
     for slot, team_name in (("team_a", a), ("team_b", b)):
         tl = pitch.get(slot, {})
         if tl:
-            print(f"  xG {team_name:<16}: anchor {tl.get('lambda_base',0):.2f} → "
-                  f"baseline {tl.get('lambda_final',0):.2f}")
+            print(f"  xG {team_name:<16}: base {tl.get('lambda_base',0):.2f} → "
+                  f"final {tl.get('lambda_final',0):.2f}")
     cm = chaos.get("summary", "")
     if cm:
         print(f"\n  ⚡ Chaos (weighted in): {cm}")
@@ -745,7 +743,7 @@ def write_prediction(fixture: dict, scenario: MatchScenario, final: dict) -> Non
 # Main runner
 # ===========================================================================
 def run_fixture(fixture: dict, ratings: dict, fixtures: list[dict],
-                results: dict, settings: Settings, verbose: bool,
+                results: dict, settings: Settings,
                 write: bool = True, dark_horses: dict | None = None) -> Optional[dict]:
     a, b = fixture["home"], fixture["away"]
     fid  = fixture["id"]
@@ -784,10 +782,9 @@ def main(argv=None) -> int:
     p.add_argument("--rerun-degraded", action="store_true",
                    help="Re-run only fixtures whose existing prediction was DEGRADED "
                         "(quality.ok == false in predictions.json)")
-    p.add_argument("--hardcoded",  action="store_true", help="Use HARDCODED_FIXTURES in this file")
     p.add_argument("--no-chaos",   action="store_true", help="Disable the weighted chaos contribution")
     p.add_argument("--no-write",   action="store_true", help="Don't update predictions.json")
-    p.add_argument("--verbose",    action="store_true", help="Print full agent trace")
+    p.add_argument("--verbose",    action="store_true", help="DEBUG-level logs (very noisy)")
     p.add_argument("--delay",      type=float, default=5.0,
                    help="Seconds between fixtures in a batch (default 5)")
     args = p.parse_args(argv)
@@ -803,61 +800,53 @@ def main(argv=None) -> int:
         print(f"Dark-horse factors active for {len(dark_horses)} team(s): "
               + ", ".join(f"{k}×{v}" for k, v in dark_horses.items()))
 
-    if args.hardcoded:
-        fixtures = HARDCODED_FIXTURES
-        ratings  = load_ratings()
-        results  = {}
-        write_predictions = False   # test fixtures never touch predictions.json
-        print(f"Using {len(fixtures)} hardcoded fixture(s).")
+    fixtures_all = load_fixtures()
+    ratings      = load_ratings()
+    results      = load_results()
+    # Turn knockout slot references (1A / W77 / L101) into concrete teams
+    # wherever the feeding results are already known.
+    fixtures_all = resolve_bracket(fixtures_all, results, ratings)
+    print(f"Loaded {len(fixtures_all)} fixtures · "
+          f"{sum(1 for r in results.values() if r.get('played'))} played.")
+
+    # Filter
+    if args.rerun_degraded:
+        store = _load_predictions_file()
+        degraded = {fid for fid, e in store.items()
+                    if isinstance(e, dict) and (e.get("quality") or {}).get("ok") is False}
+        fixtures = [f for f in fixtures_all if f["id"] in degraded]
+        print(f"Re-running {len(fixtures)} degraded fixture(s): "
+              + (", ".join(sorted(degraded)) if degraded else "none"))
+    elif args.fixture:
+        wanted = set(args.fixture)
+        fixtures = [f for f in fixtures_all if f["id"] in wanted]
+    elif args.group:
+        fixtures = [f for f in fixtures_all
+                    if f.get("group","").upper() == args.group.upper()]
+    elif args.md:
+        fixtures = [f for f in fixtures_all if f.get("md") == args.md]
+    elif args.round:
+        fixtures = [f for f in fixtures_all
+                    if f.get("round", "").upper() == args.round.upper()]
     else:
-        fixtures_all = load_fixtures()
-        ratings      = load_ratings()
-        results      = load_results()
-        # Turn knockout slot references (1A / W77 / L101) into concrete teams
-        # wherever the feeding results are already known.
-        fixtures_all = resolve_bracket(fixtures_all, results)
-        print(f"Loaded {len(fixtures_all)} fixtures · "
-              f"{sum(1 for r in results.values() if r.get('played'))} played.")
+        fixtures = fixtures_all
 
-        # Filter
-        if args.rerun_degraded:
-            store = _load_predictions_file()
-            degraded = {fid for fid, e in store.items()
-                        if isinstance(e, dict) and (e.get("quality") or {}).get("ok") is False}
-            fixtures = [f for f in fixtures_all if f["id"] in degraded]
-            print(f"Re-running {len(fixtures)} degraded fixture(s): "
-                  + (", ".join(sorted(degraded)) if degraded else "none"))
-        elif args.fixture:
-            wanted = set(args.fixture)
-            fixtures = [f for f in fixtures_all if f["id"] in wanted]
-        elif args.group:
-            fixtures = [f for f in fixtures_all
-                        if f.get("group","").upper() == args.group.upper()]
-        elif args.md:
-            fixtures = [f for f in fixtures_all if f.get("md") == args.md]
-        elif args.round:
-            fixtures = [f for f in fixtures_all
-                        if f.get("round", "").upper() == args.round.upper()]
+    if not args.all and not args.rerun_degraded:
+        # Skip matches already played
+        fixtures = [f for f in fixtures
+                    if not results.get(f["id"], {}).get("played")]
+
+    # A knockout tie whose feeders haven't finished still has slot refs for
+    # home/away — it can't run yet. Drop it with a note saying what it awaits.
+    runnable = []
+    for f in fixtures:
+        unresolved = looks_like_slot(f.get("home", "")) or looks_like_slot(f.get("away", ""))
+        if unresolved:
+            print(f"  ⏳ {f['id']} not runnable yet — awaiting "
+                  f"{f.get('home')} vs {f.get('away')} (feeders undecided).")
         else:
-            fixtures = fixtures_all
-
-        if not args.all and not args.rerun_degraded:
-            # Skip matches already played
-            fixtures = [f for f in fixtures
-                        if not results.get(f["id"], {}).get("played")]
-
-        # A knockout tie whose feeders haven't finished still has slot refs for
-        # home/away — it can't run yet. Drop it with a note (unless the user
-        # asked for a specific id, in which case surface why it's stuck).
-        runnable = []
-        for f in fixtures:
-            unresolved = looks_like_slot(f.get("home", "")) or looks_like_slot(f.get("away", ""))
-            if unresolved:
-                print(f"  ⏳ {f['id']} not runnable yet — awaiting "
-                      f"{f.get('home')} vs {f.get('away')} (feeders undecided).")
-            else:
-                runnable.append(f)
-        fixtures = runnable
+            runnable.append(f)
+    fixtures = runnable
 
     if not fixtures:
         print("No matching fixtures found.")
@@ -869,9 +858,8 @@ def main(argv=None) -> int:
     for i, fx in enumerate(fixtures):
         if i > 0:
             time.sleep(args.delay)
-        r = run_fixture(fx, ratings, fixtures_all if not args.hardcoded else fixtures,
-                        results, settings, args.verbose, write=write_predictions,
-                        dark_horses=dark_horses)
+        r = run_fixture(fx, ratings, fixtures_all, results, settings,
+                        write=write_predictions, dark_horses=dark_horses)
         if r:
             succeeded += 1
 

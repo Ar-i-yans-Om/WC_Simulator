@@ -23,8 +23,9 @@ TOURNAMENT RULES (2026 format):
 - Top 2 from each group qualify directly
 - 8 best third-placed teams also advance (making 32 total)
 - MD3 group games kick off simultaneously to prevent collusion
-- Two semifinal bracket pathways — finishing 1st vs 2nd can completely change
-  who you face in the round of 16, quarter-final and semi-final
+- The knockout bracket is fixed in advance — finishing 1st, 2nd or 3rd decides
+  your Round of 32 opponent and your path through the later rounds
+- Knockout ties are single elimination: extra time, then penalties
 
 YOUR JOB:
 Based on the group situation and the analyst's briefing, decide the optimal
@@ -65,11 +66,13 @@ def make_strategist_node(llms: dict, settings, team_key: str):
         opp_elo  = opp_scn.get("elo", 1500.0)
         group    = scn_team.get("group", "?")
         conf     = scn_team.get("confederation", "")
+        stage    = cfg["scenario"].get("stage", "")
+        knockout = bool(cfg["scenario"].get("knockout_round"))
 
         logger.info("")
         logger.info("[Strategist-%s] ── %s game-theory brief ──────────────", team_key, name)
-        logger.info("[Strategist-%s]  Group %s  |  MD%d  |  %d pts  |  ELO %.0f  |  %s",
-                    team_key, group, matchday, points, elo, conf)
+        logger.info("[Strategist-%s]  %s  |  %s  |  ELO %.0f  |  %s",
+                    team_key, stage, "knockout" if knockout else f"{points} pts", elo, conf)
         logger.info("[Strategist-%s]  Opponent: %s  (ELO %.0f)",
                     team_key, opp_scn.get("name", "?"), opp_elo)
 
@@ -85,10 +88,23 @@ def make_strategist_node(llms: dict, settings, team_key: str):
         )
         logger.info("[Strategist-%s]  Asking Gemini to reason about optimal strategy...", team_key)
 
-        enriched = reasoning.structured(
-            StrategyReport,
-            system=_STRATEGIST_SYSTEM,
-            user=(
+        if knockout:
+            user = (
+                f"My team: {name} ({conf}). Stage: {stage} — single elimination; "
+                "level after 90 minutes goes to extra time, then penalties.\n"
+                f"Our ELO: {elo}. Opponent: {opp_scn.get('name','?')} (ELO {opp_elo}).\n"
+                f"Tournament form so far (actual WC results): "
+                f"{scn_team.get('tournament_form_summary') or 'none'}.\n"
+                f"Recent form: {recent if recent else 'see briefing'}.\n"
+                f"Squad concerns: {injuries if injuries else 'none confirmed'}.\n"
+                f"Notes: {scn_team.get('notes') or 'none'}.\n\n"
+                "A knockout tie is must-win, so matrix_mode is 'Full Intensity'.\n"
+                "Set strategic_intensity_multiplier within "
+                f"{_MODE_RANGES['Full Intensity']}: how hard should the team push, "
+                "given fitness, squad concerns and the opponent? Explain why."
+            )
+        else:
+            user = (
                 f"My team: {name} ({conf}), Group {group}, Matchday {matchday}.\n"
                 f"Our ELO: {elo}. Opponent: {opp_scn.get('name','?')} (ELO {opp_elo}).\n"
                 f"Our group points going into this match: {points}.\n"
@@ -96,7 +112,7 @@ def make_strategist_node(llms: dict, settings, team_key: str):
                 f"{scn_team.get('tournament_form_summary') or 'no matches played yet (this is MD1)'}.\n"
                 f"Recent form: {recent if recent else 'see briefing'}.\n"
                 f"Squad concerns: {injuries if injuries else 'none confirmed'}.\n"
-                f"Notes: {scn_team.get('notes', 'none')}.\n\n"
+                f"Notes: {scn_team.get('notes') or 'none'}.\n\n"
                 "STEP 1 — Choose your matrix_mode:\n"
                 "  'Passive/Rotation'  if you can afford to protect legs for knockouts\n"
                 "  'Full Intensity'    if you need points from this match\n"
@@ -107,12 +123,12 @@ def make_strategist_node(llms: dict, settings, team_key: str):
                 f"  Targeted Bracket:  {_MODE_RANGES['Targeted Bracket']}\n\n"
                 "STEP 3 — Reason through the group maths: what combinations "
                 "of results guarantee/risk qualification? Bracket worth fighting for?"
-            ),
-        )
+            )
+        enriched = reasoning.structured(StrategyReport, system=_STRATEGIST_SYSTEM, user=user)
 
         chosen_mode = enriched.matrix_mode
-        if chosen_mode not in _MODE_RANGES:
-            chosen_mode = mode
+        if knockout or chosen_mode not in _MODE_RANGES:
+            chosen_mode = mode          # knockouts are always Full Intensity
         lo, hi = _MODE_RANGES[chosen_mode]
         raw_intensity = enriched.strategic_intensity_multiplier or _MODE_DEFAULTS[chosen_mode]
         clamped = round(max(lo, min(hi, raw_intensity)), 4)

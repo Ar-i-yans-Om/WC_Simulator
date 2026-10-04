@@ -3,9 +3,8 @@
   "fifa_source": "FIFA/Coca-Cola Men's World Ranking, 11 Jun 2026.",
   "elo_scale_note": "FIFA-adopted Elo scale (top teams ~1800-1900).",
   "fields": {
-    "elo": "Live ELO rating from worldfootballrankings.com",
-    "fifa_pts": "Official FIFA/Coca-Cola ranking points",
-    "fifa_rank": "Official FIFA rank as of 1 Apr 2026",
+    "elo": "ELO rating from worldfootballrankings.com (snapshot, 17 Jun 2026)",
+    "fifa_rank": "Official FIFA/Coca-Cola Men's World Ranking position (11 Jun 2026)",
     "confederation": "FIFA confederation",
     "chaos_profile": "per-match black-swan RELATIVE weights: red_card / penalty_for / penalty_against / injury (total chaos mass set by settings.chaos_base_probability). Heuristic = confederation baseline + documented team tweaks (discipline, penalty-drawing attack, defensive vulnerability); NOT computed from per-match data — tune freely.",
     "dark_horses": "OPTIONAL top-level {team: factor} map. A manual lambda multiplier (1.0 = neutral) for sides you judge under- or over-rated by ELO/FIFA. >1.0 boosts an under-rated dark horse; <1.0 fades an over-rated side. Applied in the Pitch Simulator fusion. Tune freely; teams not listed default to 1.0."
@@ -22,7 +21,6 @@
   "teams": {
     "Argentina": {
       "elo": 1889.06,
-      "fifa_pts": 1889.06,
       "fifa_rank": 1,
       "confederation": "CONMEBOL",
       "chaos_profile": {
@@ -34,7 +32,6 @@
     },
     "Spain": {
       "elo": 1856.03,
-      "fifa_pts": 1856.03,
       "fifa_rank": 2,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -46,7 +43,6 @@
     },
     "France": {
       "elo": 1887.11,
-      "fifa_pts": 1887.11,
       "fifa_rank": 3,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -58,7 +54,6 @@
     },
     "England": {
       "elo": 1828.02,
-      "fifa_pts": 1828.02,
       "fifa_rank": 4,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -70,7 +65,6 @@
     },
     "Portugal": {
       "elo": 1767.85,
-      "fifa_pts": 1767.85,
       "fifa_rank": 5,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -82,7 +76,6 @@
     },
     "Brazil": {
       "elo": 1765.34,
-      "fifa_pts": 1765.34,
       "fifa_rank": 6,
       "confederation": "CONMEBOL",
       "chaos_profile": {
@@ -94,7 +87,6 @@
     },
     "Netherlands": {
       "elo": 1749.2,
-      "fifa_pts": 1749.2,
       "fifa_rank": 8,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -106,7 +98,6 @@
     },
     "Morocco": {
       "elo": 1755.62,
-      "fifa_pts": 1755.62,
       "fifa_rank": 7,
       "confederation": "CAF",
       "chaos_profile": {
@@ -118,7 +109,6 @@
     },
     "Belgium": {
       "elo": 1733.93,
-      "fifa_pts": 1733.93,
       "fifa_rank": 9,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -130,7 +120,6 @@
     },
     "Germany": {
       "elo": 1743.54,
-      "fifa_pts": 1743.54,
       "fifa_rank": 10,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -142,7 +131,6 @@
     },
     "Croatia": {
       "elo": 1714.87,
-      "fifa_pts": 1714.87,
       "fifa_rank": 11,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -154,7 +142,6 @@
     },
     "Colombia": {
       "elo": 1698.35,
-      "fifa_pts": 1698.35,
       "fifa_rank": 13,
       "confederation": "CONMEBOL",
       "chaos_profile": {
@@ -166,7 +153,6 @@
     },
     "Senegal": {
       "elo": 1667.66,
-      "fifa_pts": 1667.66,
       "fifa_rank": 15,
       "confederation": "CAF",
       "chaos_profile": {
@@ -178,7 +164,6 @@
     },
     "Mexico": {
       "elo": 1700.98,
-      "fifa_pts": 1700.98,
       "fifa_rank": 14,
       "confederation": "CONCACAF",
       "chaos_profile": {
@@ -190,7 +175,6 @@
     },
     "United States": {
       "elo": 1688.53,
-      "fifa_pts": 1688.53,
       "fifa_rank": 17,
       "confederation": "CONCACAF",
       "chaos_profile": {
@@ -202,7 +186,6 @@
     },
     "Uruguay": {
       "elo": 1661.95,
-      "fifa_pts": 1661.95,
       "fifa_rank": 16,
       "confederation": "CONMEBOL",
       "chaos_profile": {
@@ -214,7 +197,6 @@
     },
     "Japan": {
       "elo": 1665.94,
-      "fifa_pts": 1665.94,
       "fifa_rank": 18,
       "confederation": "AFC",
       "chaos_profile": {
@@ -226,7 +208,6 @@
     },
     "Switzerland": {
       "elo": 1640.92,
-      "fifa_pts": 1640.92,
       "fifa_rank": 19,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -238,7 +219,6 @@
     },
     "Iran": {
       "elo": 1605.12,
-      "fifa_pts": 1605.12,
       "fifa_rank": 20,
       "confederation": "AFC",
       "chaos_profile": {
@@ -250,7 +230,6 @@
     },
     "Türkiye": {
       "elo": 1579.47,
-      "fifa_pts": 1579.47,
       "fifa_rank": 22,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -262,7 +241,6 @@
     },
     "Ecuador": {
       "elo": 1570.76,
-      "fifa_pts": 1570.76,
       "fifa_rank": 23,
       "confederation": "CONMEBOL",
       "chaos_profile": {
@@ -274,7 +252,6 @@
     },
     "Austria": {
       "elo": 1612.86,
-      "fifa_pts": 1612.86,
       "fifa_rank": 24,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -286,7 +263,6 @@
     },
     "Korea Republic": {
       "elo": 1612.55,
-      "fifa_pts": 1612.55,
       "fifa_rank": 25,
       "confederation": "AFC",
       "chaos_profile": {
@@ -298,7 +274,6 @@
     },
     "Australia": {
       "elo": 1605.61,
-      "fifa_pts": 1605.61,
       "fifa_rank": 27,
       "confederation": "AFC",
       "chaos_profile": {
@@ -310,7 +285,6 @@
     },
     "Algeria": {
       "elo": 1559.24,
-      "fifa_pts": 1559.24,
       "fifa_rank": 28,
       "confederation": "CAF",
       "chaos_profile": {
@@ -322,7 +296,6 @@
     },
     "Egypt": {
       "elo": 1570.67,
-      "fifa_pts": 1570.67,
       "fifa_rank": 29,
       "confederation": "CAF",
       "chaos_profile": {
@@ -334,7 +307,6 @@
     },
     "Canada": {
       "elo": 1551.5,
-      "fifa_pts": 1551.5,
       "fifa_rank": 30,
       "confederation": "CONCACAF",
       "chaos_profile": {
@@ -346,7 +318,6 @@
     },
     "Norway": {
       "elo": 1577.18,
-      "fifa_pts": 1577.18,
       "fifa_rank": 31,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -358,7 +329,6 @@
     },
     "Panama": {
       "elo": 1539.16,
-      "fifa_pts": 1539.16,
       "fifa_rank": 34,
       "confederation": "CONCACAF",
       "chaos_profile": {
@@ -370,7 +340,6 @@
     },
     "Ivory Coast": {
       "elo": 1568.62,
-      "fifa_pts": 1568.62,
       "fifa_rank": 33,
       "confederation": "CAF",
       "chaos_profile": {
@@ -382,7 +351,6 @@
     },
     "Sweden": {
       "elo": 1533.19,
-      "fifa_pts": 1533.19,
       "fifa_rank": 38,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -394,7 +362,6 @@
     },
     "Paraguay": {
       "elo": 1488.05,
-      "fifa_pts": 1488.05,
       "fifa_rank": 41,
       "confederation": "CONMEBOL",
       "chaos_profile": {
@@ -406,7 +373,6 @@
     },
     "Czechia": {
       "elo": 1484.82,
-      "fifa_pts": 1484.82,
       "fifa_rank": 40,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -418,7 +384,6 @@
     },
     "Scotland": {
       "elo": 1518.77,
-      "fifa_pts": 1518.77,
       "fifa_rank": 42,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -430,7 +395,6 @@
     },
     "Tunisia": {
       "elo": 1453.0,
-      "fifa_pts": 1453.0,
       "fifa_rank": 45,
       "confederation": "CAF",
       "chaos_profile": {
@@ -442,7 +406,6 @@
     },
     "DR Congo": {
       "elo": 1474.43,
-      "fifa_pts": 1474.43,
       "fifa_rank": 46,
       "confederation": "CAF",
       "chaos_profile": {
@@ -454,7 +417,6 @@
     },
     "Uzbekistan": {
       "elo": 1458.73,
-      "fifa_pts": 1458.73,
       "fifa_rank": 50,
       "confederation": "AFC",
       "chaos_profile": {
@@ -466,7 +428,6 @@
     },
     "Bosnia and Herzegovina": {
       "elo": 1395.19,
-      "fifa_pts": 1395.19,
       "fifa_rank": 64,
       "confederation": "UEFA",
       "chaos_profile": {
@@ -478,7 +439,6 @@
     },
     "Saudi Arabia": {
       "elo": 1435.0,
-      "fifa_pts": 1435.0,
       "fifa_rank": 61,
       "confederation": "AFC",
       "chaos_profile": {
@@ -490,7 +450,6 @@
     },
     "Ghana": {
       "elo": 1346.88,
-      "fifa_pts": 1346.88,
       "fifa_rank": 73,
       "confederation": "CAF",
       "chaos_profile": {
@@ -502,7 +461,6 @@
     },
     "Iraq": {
       "elo": 1426.53,
-      "fifa_pts": 1426.53,
       "fifa_rank": 57,
       "confederation": "AFC",
       "chaos_profile": {
@@ -514,7 +472,6 @@
     },
     "South Africa": {
       "elo": 1414.88,
-      "fifa_pts": 1414.88,
       "fifa_rank": 60,
       "confederation": "CAF",
       "chaos_profile": {
@@ -526,7 +483,6 @@
     },
     "Jordan": {
       "elo": 1372.29,
-      "fifa_pts": 1372.29,
       "fifa_rank": 63,
       "confederation": "AFC",
       "chaos_profile": {
@@ -538,7 +494,6 @@
     },
     "Cape Verde": {
       "elo": 1389.79,
-      "fifa_pts": 1389.79,
       "fifa_rank": 67,
       "confederation": "CAF",
       "chaos_profile": {
@@ -550,7 +505,6 @@
     },
     "Qatar": {
       "elo": 1459.45,
-      "fifa_pts": 1459.45,
       "fifa_rank": 56,
       "confederation": "AFC",
       "chaos_profile": {
@@ -562,7 +516,6 @@
     },
     "New Zealand": {
       "elo": 1290.04,
-      "fifa_pts": 1290.04,
       "fifa_rank": 85,
       "confederation": "OFC",
       "chaos_profile": {
@@ -574,7 +527,6 @@
     },
     "Curaçao": {
       "elo": 1287.0,
-      "fifa_pts": 1287.0,
       "fifa_rank": 82,
       "confederation": "CONCACAF",
       "chaos_profile": {
@@ -586,7 +538,6 @@
     },
     "Haiti": {
       "elo": 1277.67,
-      "fifa_pts": 1277.67,
       "fifa_rank": 83,
       "confederation": "CONCACAF",
       "chaos_profile": {

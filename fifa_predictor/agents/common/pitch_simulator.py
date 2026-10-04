@@ -52,12 +52,13 @@ disruptions — those are folded in later as a probability-weighted mixture. Ass
 a clean, full-strength game.
 
 Typical ranges: 0.5 (very defensive/dominated) to 2.5 (dominant/clinical).
-Most World Cup group games fall between 0.8 and 1.9 per team.
+Most World Cup matches fall between 0.8 and 1.9 per team.
 Set lambda_a and lambda_b independently — they do not need to be symmetric.\
 """
 
 
-def _describe_team(name: str, packet: dict, elo: float, group_points: int) -> str:
+def _describe_team(name: str, packet: dict, elo: float, group_points: int,
+                   knockout: bool = False) -> str:
     form     = packet.get("form", {})
     fitness  = packet.get("fitness", {})
     cohesion = packet.get("cohesion", {})
@@ -69,9 +70,10 @@ def _describe_team(name: str, packet: dict, elo: float, group_points: int) -> st
                  if gs is not None and gc is not None
                  else "no recent-scoring rate available")
 
+    strength = f"ELO {elo}" + ("" if knockout else f", {group_points} group pts")
     return (
         f"=== {name} ===\n"
-        f"Strength: ELO {elo}, {group_points} group pts.\n"
+        f"Strength: {strength}.\n"
         f"Form: {form_rate}. "
         f"Results: {form.get('recent_results', [])}.\n"
         f"Injuries: {form.get('injuries', []) or form.get('suspensions', []) or 'none'}.\n"
@@ -106,6 +108,7 @@ def make_pitch_simulator_node(llms: dict, settings):
         b_elo  = scn["team_b"].get("elo", 1500.0)
         a_pts  = scn["team_a"].get("group_points", 0)
         b_pts  = scn["team_b"].get("group_points", 0)
+        knockout = bool(scn.get("knockout_round"))
 
         a_plan = a.get("tactics", {})
         b_plan = b.get("tactics", {})
@@ -147,9 +150,10 @@ def make_pitch_simulator_node(llms: dict, settings):
                 f"Fixture: {a_name} vs {b_name} "
                 f"({scn.get('competition','FIFA World Cup 2026')}, "
                 f"{scn.get('stage','Group Stage')}).\n\n"
-                f"{_describe_team(a_name, a, a_elo, a_pts)}\n\n"
-                f"{_describe_team(b_name, b, b_elo, b_pts)}\n\n"
-                f"ELO-based statistical anchor (form only, ignores tactics): "
+                f"{_describe_team(a_name, a, a_elo, a_pts, knockout)}\n\n"
+                f"{_describe_team(b_name, b, b_elo, b_pts, knockout)}\n\n"
+                f"ELO-based statistical anchor (rating gap and home advantage only; "
+                f"ignores tactics): "
                 f"{a_name} {anchor_a} / {b_name} {anchor_b}.\n\n"
                 f"Estimate lambda_a ({a_name} xG) and lambda_b ({b_name} xG) "
                 f"for the full 90 minutes of normal play (no black-swan events). "
@@ -159,9 +163,10 @@ def make_pitch_simulator_node(llms: dict, settings):
         )
 
         # The LLM returns a CLEAN tactical/ELO baseline (it is told NOT to bake in
-        # chemistry, intensity or fitness). We now fuse the quantified levers in
-        # deterministically, so every agent's output actually moves the number and
-        # the "base × coh × int × fit × fit-deg = λ" identity holds exactly.
+        # chemistry, intensity or fitness). The quantified levers are then fused in
+        # deterministically, so every agent's output actually moves the number:
+        # λ = base × coh × int × fit × fit-deg × momentum × dark-horse, clamped
+        # to [0.3, 3.5].
         base_a = round(max(0.3, min(3.5, estimate.lambda_a)), 4)
         base_b = round(max(0.3, min(3.5, estimate.lambda_b)), 4)
 
@@ -206,7 +211,7 @@ def make_pitch_simulator_node(llms: dict, settings):
                     lam_b.name, lam_b.lambda_final, base_b, coh_b, int_b, fit_b, fdeg_b, mom_b, dh_b, anchor_b)
         logger.info("[PitchSim]  Assessment: %s", note)
 
-        result = PitchResult(team_a=lam_a, team_b=lam_b, collision_note=note, phase="pre_chaos")
+        result = PitchResult(team_a=lam_a, team_b=lam_b, collision_note=note)
         return {
             "pitch": result.model_dump(),
             "step_log": [

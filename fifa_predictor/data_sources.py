@@ -2,7 +2,7 @@
 data_sources.py
 ===============
 
-Real, deterministic public-data helpers used by the Common Researcher.
+Real, deterministic public-data helpers used by the Researcher and Bookmaker.
 
 Nothing here is mocked:
 
@@ -10,19 +10,19 @@ Nothing here is mocked:
   real lat/long geocoordinates and stadium altitudes. `travel_distance_km`
   computes the real great-circle (Haversine) distance between two of them.
 
-* `compute_fitness_profile` turns rest days, travel distance, altitude and host
-  status into the Physiologist `fitness_degradation_factor` via a transparent,
-  documented formula (no black boxes).
+* `compute_fitness_profile` turns rest days, travel distance, altitude, climate
+  and host status into the Physiologist `fitness_degradation_factor` via a
+  transparent, documented formula (no black boxes).
 
-* The optional scrapers (`fbref_recent_form`, `wikipedia_squad`,
-  `odds_api_match`) pull live numbers from real public endpoints. They are OFF
-  by default; the default research lifeline is Claude's web_search.
+* The the-odds-api.com helpers (`odds_api_fixture_odds` and friends) fetch live
+  H2H odds for a single fixture when an ODDS_API_KEY is configured; otherwise
+  the Bookmaker falls back to Gemini with Google Search grounding.
 """
 
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 # ---------------------------------------------------------------------------
 # Real 2026 FIFA World Cup host cities: (latitude, longitude, stadium altitude m)
@@ -109,16 +109,16 @@ TEAM_CLIMATE_ARCHETYPE: Dict[str, str] = {
     "Canada": "cool_temperate", "New Zealand": "cool_temperate",
     # warm-temperate (S Europe, USA, Southern Cone, etc.)
     "Spain": "warm_temperate", "Portugal": "warm_temperate",
-    "Italy": "warm_temperate", "Croatia": "warm_temperate",
-    "Türkiye": "warm_temperate", "United States": "warm_temperate",
-    "Argentina": "warm_temperate", "Uruguay": "warm_temperate",
-    "Paraguay": "warm_temperate", "Japan": "warm_temperate",
-    "Korea Republic": "warm_temperate", "Uzbekistan": "warm_temperate",
+    "Croatia": "warm_temperate", "Türkiye": "warm_temperate",
+    "United States": "warm_temperate", "Argentina": "warm_temperate",
+    "Uruguay": "warm_temperate", "Paraguay": "warm_temperate",
+    "Japan": "warm_temperate", "Korea Republic": "warm_temperate",
+    "Uzbekistan": "warm_temperate", "South Africa": "warm_temperate",
     # hot & humid (tropical / Gulf-coast / coastal W Africa / Caribbean)
     "Brazil": "hot_humid", "Senegal": "hot_humid", "Ivory Coast": "hot_humid",
     "Ghana": "hot_humid", "DR Congo": "hot_humid", "Cape Verde": "hot_humid",
     "Panama": "hot_humid", "Curaçao": "hot_humid", "Haiti": "hot_humid",
-    "Australia": "hot_humid", "South Africa": "warm_temperate",
+    "Australia": "hot_humid",
     # hot & arid (N Africa / Gulf / desert)
     "Morocco": "hot_arid", "Algeria": "hot_arid", "Egypt": "hot_arid",
     "Tunisia": "hot_arid", "Saudi Arabia": "hot_arid", "Iran": "hot_arid",
@@ -155,7 +155,7 @@ CITY_ALIASES: dict = {
     "Foxboro":         "Boston",        # Gillette Stadium
     "Arlington":       "Dallas",        # AT&T Stadium
     "Santa Clara":     "San Francisco", # Levi's Stadium
-    # Venue names that leaked into the city field in some data sources
+    # Stadium names that some schedule sources put in the city field
     "AT&T Stadium":    "Dallas",
     "BMO Field":       "Toronto",
     "Arrowhead Stadium": "Kansas City",
@@ -213,12 +213,13 @@ def venue_altitude_m(city: str) -> float:
 # The Physiologist Multiplier
 # ---------------------------------------------------------------------------
 # fitness_degradation_factor = clamp(1.0 - rest_pen - travel_pen - climate_pen
-#                                        + host_bonus, 0.80, 1.06)
+#                                        - unfamiliar_pen + host_bonus, 0.80, 1.06)
 #
-#   rest_pen    : each day of rest below a 4-day baseline costs 3% (capped 12%).
-#   travel_pen  : up to 6% scaling linearly to ~8000 km of travel.
-#   climate_pen : altitude > 1500 m for a non-acclimatised team costs up to 5%.
-#   host_bonus  : +4% for the host nation / hyper-familiar environment.
+#   rest_pen       : each day of rest below a 4-day baseline costs 3% (capped 12%).
+#   travel_pen     : up to 6% scaling linearly to ~8000 km of travel.
+#   climate_pen    : altitude > 1500 m for a non-acclimatised team costs up to 5%.
+#   unfamiliar_pen : a venue hotter / more humid than home costs up to 4%.
+#   host_bonus     : +4% for the host nations (crowd / familiarity).
 # ---------------------------------------------------------------------------
 REST_BASELINE_DAYS = 4
 REST_PENALTY_PER_DAY = 0.03
@@ -249,7 +250,11 @@ def compute_fitness_profile(
     home_humidity: float | None = None,
     acclimatised_to_altitude: bool = False,
 ) -> dict:
-    """Return the fields needed to populate schemas.FitnessProfile."""
+    """
+    The Physiologist profile as a plain dict. `fitness_degradation_factor` is a
+    multiplier on a team's baseline lambda: < 1.0 degraded (rest, travel,
+    altitude, climate), 1.0 neutral, > 1.0 boosted (host nation).
+    """
     rest_penalty = min(
         REST_PENALTY_CAP,
         max(0, REST_BASELINE_DAYS - rest_days) * REST_PENALTY_PER_DAY,
@@ -302,87 +307,6 @@ def compute_fitness_profile(
         "host_bonus": round(host_bonus, 4),
         "fitness_degradation_factor": round(factor, 4),
     }
-
-
-# ---------------------------------------------------------------------------
-# Optional structured scrapers (real public endpoints; OFF by default)
-# ---------------------------------------------------------------------------
-def fbref_recent_form(team_url: str, last_n: int = 6) -> Optional[dict]:
-    """
-    Scrape recent results + goals from a public FBref team match-log page.
-
-    Returns {"avg_goals_scored","avg_goals_conceded","recent_results"} or None.
-    Requires `enable_fbref_scraper` and pandas/lxml installed. FBref publishes
-    StatsBomb-backed data; respect their rate limits (1 request / few seconds).
-    """
-    try:
-        import pandas as pd
-
-        tables = pd.read_html(team_url)
-        # The scores & fixtures table is typically the first with a 'GF'/'GA' pair.
-        for df in tables:
-            cols = {str(c).lower() for c in df.columns.get_level_values(-1)} if hasattr(
-                df.columns, "get_level_values"
-            ) else {str(c).lower() for c in df.columns}
-            if {"gf", "ga"} <= cols:
-                df = df.dropna(subset=[c for c in df.columns if str(c).lower() in ("gf", "ga")])
-                tail = df.tail(last_n)
-                gf = [c for c in df.columns if str(c).lower() == "gf"][0]
-                ga = [c for c in df.columns if str(c).lower() == "ga"][0]
-                scored = [float(x) for x in tail[gf] if str(x).replace(".", "").isdigit()]
-                conceded = [float(x) for x in tail[ga] if str(x).replace(".", "").isdigit()]
-                if not scored:
-                    continue
-                results = []
-                for s, c in zip(scored, conceded):
-                    results.append("W" if s > c else ("D" if s == c else "L"))
-                return {
-                    "avg_goals_scored": round(sum(scored) / len(scored), 2),
-                    "avg_goals_conceded": round(sum(conceded) / max(1, len(conceded)), 2),
-                    "recent_results": results,
-                }
-    except Exception:
-        return None
-    return None
-
-
-def wikipedia_squad(page_title: str) -> Optional[Dict[str, str]]:
-    """
-    Pull a player->club map from a public Wikipedia squad article via the REST
-    summary/HTML API. Returns None if unavailable. (Best-effort; web_search is
-    the more reliable default route for squad clubs.)
-    """
-    try:
-        import requests
-
-        url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{page_title}"
-        r = requests.get(url, timeout=10, headers={"User-Agent": "fifa-predictor/1.0"})
-        if r.status_code != 200:
-            return None
-        # The summary endpoint does not contain the full table; this is a stub
-        # hook deliberately left for users who want to parse the full squad HTML.
-        return None
-    except Exception:
-        return None
-
-
-def odds_api_match(api_key: str, sport: str = "soccer_fifa_world_cup") -> Optional[List[dict]]:
-    """
-    DEPRECATED (whole-slate fetch). Returns every upcoming event for the sport.
-    Prefer `odds_api_fixture_odds`, which targets a single fixture server-side.
-    Kept only for backward compatibility.
-    """
-    try:
-        import requests
-
-        url = f"https://api.the-odds-api.com/v4/sports/{sport}/odds"
-        params = {"apiKey": api_key, "regions": "uk,eu", "markets": "h2h", "oddsFormat": "decimal"}
-        r = requests.get(url, params=params, timeout=15)
-        if r.status_code != 200:
-            return None
-        return r.json()
-    except Exception:
-        return None
 
 
 # ---------------------------------------------------------------------------

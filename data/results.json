@@ -1,6 +1,5 @@
 {
   "_instructions": "Fill in home_score and away_score as each match is played. Set played=true when the score is final. match_runner.py reads this file to compute group standings and to advance the knockout bracket. KNOCKOUTS: ids M73-M104 (see fixtures.json). Enter the score after normal/extra time; if it finished level and was decided on penalties, add \"winner\":\"<team name>\" so the bracket knows who advances (e.g. \"winner\":\"Germany\").",
-  "last_updated": "2026-06-11",
   "results": [
     {
       "id": "A1",

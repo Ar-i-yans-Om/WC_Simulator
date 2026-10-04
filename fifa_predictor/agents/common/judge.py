@@ -75,7 +75,7 @@ def make_judge_node(llms: dict, settings):
 
         chaos = state.get("chaos", {})
         scenarios = chaos.get("scenarios", [])
-        max_goals = state["config"].get("settings", {}).get("max_goals", 4)
+        max_goals = state["config"].get("settings", {}).get("max_goals", 7)
 
         logger.info("")
         logger.info("[Judge] ══ MIXTURE POISSON VERDICT ═══════════════════════════")
@@ -132,7 +132,8 @@ def make_judge_node(llms: dict, settings):
                 f"{chaos_mass:.0%} of the probability mass and are already folded "
                 f"into the W/D/L and scoreline grid via a weighted mixture of "
                 f"{len(scenarios)} Poisson grids; the remaining {1 - chaos_mass:.0%} "
-                f"is the baseline. xG shown is the mixture mean."
+                f"is the baseline. The baseline xG excludes these events; the "
+                f"grid's mean includes them."
             )
         else:
             chaos_text = "Chaos disabled (p=0); the distribution is the pure baseline."
@@ -166,9 +167,9 @@ def make_judge_node(llms: dict, settings):
             + f".\nMarket: {market_text}\nChaos: {chaos_text}\n"
             f"Collision: {pitch.get('collision_note','')}"
         )
-        # Ask the model to PRODUCE prose, not preserve numbers. The previous
-        # "keep X / use exact Y / enrich the rest" phrasing cued small reasoning
-        # models to treat the object as pre-filled and return all-empty strings.
+        # Ask the model to PRODUCE prose, not preserve numbers: "keep X / use
+        # exact Y / enrich the rest" phrasing cues small reasoning models to
+        # treat the object as pre-filled and return all-empty strings.
         enriched = judge_llm.structured(
             JudgeProse,
             system=_JUDGE_SYSTEM,

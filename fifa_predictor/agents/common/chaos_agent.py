@@ -17,8 +17,9 @@ combines them into one mixture distribution - so every possible scenario is
 weighted into a single run.
 
 `p` is `settings.chaos_base_probability` (set it to 0.0 for a clean baseline).
-The scenario weights, per-event multipliers and the VAR-penalty additive xG live
-in `math_engine` as the single chaos tuning point.
+How that mass is split across events and teams comes from each team's
+chaos_profile; the per-event multipliers and the VAR-penalty additive xG live in
+`math_engine` as the single severity tuning point.
 """
 
 from __future__ import annotations
@@ -32,15 +33,15 @@ from ...schemas import ChaosModel, ChaosScenario
 def make_chaos_node(llms: dict, settings):
 
     def chaos_node(state: dict) -> dict:
-        p = float(getattr(settings, "chaos_base_probability", 0.22))
+        p = float(getattr(settings, "chaos_base_probability", 0.3))
         scn = state.get("config", {}).get("scenario", {})
         rates_a = scn.get("team_a", {}).get("chaos_profile") or None
         rates_b = scn.get("team_b", {}).get("chaos_profile") or None
         logger.info("")
         logger.info("[Chaos] ── Weighted black-swan model (p=%.2f) ─────────────", p)
         if rates_a or rates_b:
-            logger.info("[Chaos]  using per-team historical profiles "
-                        "(frequency data-driven, severity fixed)")
+            logger.info("[Chaos]  using per-team chaos profiles "
+                        "(frequency split per team, severity fixed)")
 
         scenarios = [ChaosScenario(**sc) for sc in build_chaos_scenarios(p, rates_a, rates_b)]
         chaos_mass = round(sum(s.probability for s in scenarios if s.event_type != "none"), 4)

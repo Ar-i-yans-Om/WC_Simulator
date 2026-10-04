@@ -5,7 +5,7 @@ schemas.py
 Strict typed contracts for everything that flows through the graph.
 
 * The *payloads* (what each agent produces) are Pydantic v2 models. They double
-  as the JSON Schemas we hand to Claude for forced structured output, so the
+  as the response schemas handed to Gemini for structured JSON output, so the
   LLM is constrained to emit exactly these shapes.
 * The *graph state* (`AgentState`) is a `TypedDict` with channel reducers, which
   is what LangGraph expects.
@@ -17,7 +17,7 @@ response never crashes the graph - missing fields simply fall back to defaults.
 from __future__ import annotations
 
 import operator
-from typing import Annotated, Any, Dict, List, Literal, Optional, TypedDict
+from typing import Annotated, Dict, List, Literal, Optional, TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -25,28 +25,6 @@ from pydantic import BaseModel, Field
 # ===========================================================================
 # 1. COMMON RESEARCHER OUTPUTS  (impartial, computed for BOTH teams)
 # ===========================================================================
-class FitnessProfile(BaseModel):
-    """
-    The Physiologist multiplier, baked into the Researcher's payload.
-
-    `fitness_degradation_factor` is a multiplier on a team's baseline lambda:
-      < 1.0  -> degraded (fatigue/travel/climate)
-      = 1.0  -> neutral
-      > 1.0  -> boosted (host nation / hyper-familiar conditions)
-    """
-
-    rest_days: int = 4
-    travel_km: float = 0.0
-    is_host_nation: bool = False
-    altitude_m: float = 0.0
-    climate_note: str = ""
-    rest_penalty: float = 0.0
-    travel_penalty: float = 0.0
-    climate_penalty: float = 0.0
-    host_bonus: float = 0.0
-    fitness_degradation_factor: float = 1.0
-
-
 class SquadEntry(BaseModel):
     """One player→club pairing. A list of these (instead of a Dict[str,str] map)
     so the whole TeamForm is representable as a native Gemini response_schema —
@@ -64,8 +42,6 @@ class TeamForm(BaseModel):
     recent_results: List[str] = Field(default_factory=list)        # e.g. ["W","W","D"]
     avg_goals_scored: Optional[float] = None    # recent attacking rate (computed from results)
     avg_goals_conceded: Optional[float] = None  # recent defensive rate (computed from results)
-    recent_xg_for: Optional[float] = None
-    recent_xg_against: Optional[float] = None
     injuries: List[str] = Field(default_factory=list)
     suspensions: List[str] = Field(default_factory=list)
     likely_lineup: str = ""   # predicted XI + formation from press conf / reporters
@@ -79,8 +55,6 @@ class GlobalResearch(BaseModel):
 
     team_a_form: TeamForm = Field(default_factory=TeamForm)
     team_b_form: TeamForm = Field(default_factory=TeamForm)
-    team_a_fitness: FitnessProfile = Field(default_factory=FitnessProfile)
-    team_b_fitness: FitnessProfile = Field(default_factory=FitnessProfile)
     fixture_summary: str = ""
     sources: List[str] = Field(default_factory=list)
 
@@ -96,7 +70,7 @@ class ChemistryCluster(BaseModel):
 class CohesionReport(BaseModel):
     """Alchemist output - club-level synergy within a team's own 26-man roster."""
 
-    cohesion_multiplier: float = 1.0          # ~[0.85, 1.20]
+    cohesion_multiplier: float = 1.0          # derived from clusters: [1.00, 1.08]
     clusters: List[ChemistryCluster] = Field(default_factory=list)
     reasoning: str = ""
 
@@ -105,7 +79,7 @@ class StrategyReport(BaseModel):
     """Strategist output - tournament game theory for THIS team only."""
 
     matrix_mode: Literal["Full Intensity", "Passive/Rotation", "Targeted Bracket"] = "Full Intensity"
-    strategic_intensity_multiplier: float = 1.0   # ~[0.80, 1.10]
+    strategic_intensity_multiplier: float = 1.0   # clamped per mode, overall [0.78, 1.14]
     target_bracket: str = ""                       # optional knockout-path intent
     reasoning: str = ""
 
@@ -158,7 +132,6 @@ class PitchResult(BaseModel):
     team_a: TeamLambda = Field(default_factory=TeamLambda)
     team_b: TeamLambda = Field(default_factory=TeamLambda)
     collision_note: str = ""
-    phase: Literal["pre_chaos", "post_chaos"] = "pre_chaos"
 
 
 class BookmakerReport(BaseModel):
@@ -202,7 +175,7 @@ class ChaosModel(BaseModel):
     run. `scenarios` probabilities sum to 1.0.
     """
 
-    base_probability: float = 0.22                 # P(some black-swan occurs)
+    base_probability: float = 0.3                  # P(some black-swan occurs)
     scenarios: List[ChaosScenario] = Field(default_factory=list)
     summary: str = ""
 
@@ -221,7 +194,7 @@ class PoissonReport(BaseModel):
     expected_goals_home: float = 0.0
     expected_goals_away: float = 0.0
     grid: List[List[float]] = Field(default_factory=list)   # full 0-0..N-N matrix
-    max_goals: int = 4                                       # grid spans 0..max_goals
+    max_goals: int = 7                                       # grid spans 0..max_goals
 
 
 class FinalReport(BaseModel):

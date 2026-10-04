@@ -33,10 +33,6 @@ def get_team(state: dict, team_key: str) -> dict:
     return dict(state.get("teams", {}).get(team_key, {}))
 
 
-def own_form(state: dict, team_key: str) -> dict:
-    return get_team(state, team_key).get("form", {})
-
-
 def public_opponent_view(state: dict, my_key: str) -> Dict:
     """
     Return ONLY the public-knowledge slice of the opponent's form.

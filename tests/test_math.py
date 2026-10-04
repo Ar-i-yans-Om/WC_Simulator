@@ -77,6 +77,16 @@ def test_chaos_scenarios_probabilities_sum_to_one():
         assert abs(sum(s["probability"] for s in scenarios) - 1.0) < 1e-6
 
 
+def test_chaos_scenarios_with_team_profiles_sum_to_one():
+    disciplined = {"red_card": 0.07, "penalty_for": 0.18, "penalty_against": 0.14, "injury": 0.07}
+    volatile    = {"red_card": 0.16, "penalty_for": 0.25, "penalty_against": 0.15, "injury": 0.07}
+    scenarios = build_chaos_scenarios(0.3, disciplined, volatile)
+    assert abs(sum(s["probability"] for s in scenarios) - 1.0) < 1e-5
+    reds = {s["affected_team"]: s["probability"] for s in scenarios
+            if s["event_type"] == "straight_red_card"}
+    assert reds["B"] > reds["A"]      # the less disciplined side carries more red-card mass
+
+
 def test_chaos_baseline_weight_equals_one_minus_p():
     scenarios = build_chaos_scenarios(0.22)
     baseline = next(s for s in scenarios if s["event_type"] == "none")

@@ -21,7 +21,6 @@ Design principles:
     has the full physical picture.
   - ELO and FIFA rank: passed through as raw strength signals. Never used to
     derive goals or probabilities here — that is the Pitch Simulator's job.
-  - No dry-run branch. The node always runs fully.
 """
 
 from __future__ import annotations
@@ -54,16 +53,11 @@ def _load_players_roster(data_dir: str | Path | None = None) -> dict[str, list[d
     data_dir is not supplied. Returns {} silently if the file is absent.
     """
     if data_dir is None:
-        # researcher.py → common/ → agents/ → fifa_predictor/ → project_root/
-        # 4 parents up from this file reaches the outer project root where data/ lives.
-        # Layout is fixed and known: do not use a walk-up loop (fragile if any
-        # intermediate directory ever gains its own data/ folder).
+        # researcher.py → common/ → agents/ → fifa_predictor/ → repo root.
+        # parents[3] is the repository root, where data/ lives. The layout is
+        # fixed: no walk-up search (fragile if a subfolder ever gains a data/).
         project_root = Path(__file__).resolve().parents[3]
         data_dir = project_root / "data"
-
-    if data_dir is None:
-        logger.warning("[Researcher] players.json not found — roster will be empty")
-        return {}
 
     players_path = Path(data_dir) / "players.json"
     if not players_path.exists():
@@ -98,7 +92,7 @@ def _squad_clubs_from_roster(players: list[dict]) -> dict[str, str]:
 
 
 def _entries_to_dict(entries) -> dict[str, str]:
-    """Normalise squad_clubs (now a List[SquadEntry] / list of dicts) into a plain
+    """Normalise squad_clubs (a List[SquadEntry] / list of dicts) into a plain
     {player: club} map for merging and logging."""
     out: dict[str, str] = {}
     for e in entries or []:
@@ -123,12 +117,13 @@ _RESULT_SCORE_RE = re.compile(r"^\s*[WDL]\s*[:\-]?\s*(\d+)\s*[-–—]\s*(\d+)",
 def _wc_result_strings(scn_team: dict) -> list[str]:
     """Turn the actual WC matches played (from results.json, via the scenario)
     into recent-result strings the avg-goals parser understands, e.g.
-    'W 2-0 vs South Africa (WC MD1)'. Most recent last."""
+    'W 2-0 vs South Africa (WC MD1)' or 'W 2-1 vs Sweden (WC R32)'. Most recent last."""
     out: list[str] = []
     for m in scn_team.get("tournament_results", []) or []:
+        stage = m.get("stage") or f"MD{m.get('md', '?')}"
         out.append(
             f"{m.get('result','?')} {m.get('gf','?')}-{m.get('ga','?')} "
-            f"vs {m.get('opponent','?')} (WC MD{m.get('md','?')})"
+            f"vs {m.get('opponent','?')} (WC {stage})"
         )
     return out
 
@@ -136,7 +131,7 @@ def _wc_result_strings(scn_team: dict) -> list[str]:
 def _avg_goals_from_results(results: list[str]) -> tuple[float | None, float | None]:
     """Deterministically derive (avg scored, avg conceded) from the parsed
     recent-results strings. Returns (None, None) if nothing parseable — so a
-    missing rate stays explicitly absent rather than the old 1.3/1.2 placeholder.
+    missing rate stays explicitly absent rather than defaulting to a guess.
     """
     scored, conceded = [], []
     for r in results or []:
@@ -246,7 +241,7 @@ def _fitness_context_block(team_name: str, fit: dict, team_scn: dict) -> str:
 
 _RESEARCH_SYSTEM = """\
 You are the head analyst for a national football coaching staff preparing for a
-FIFA World Cup 2026 group-stage match.
+FIFA World Cup 2026 match.
 
 YOUR JOB IS TO GATHER AND CONSOLIDATE RAW FACTS into a pre-match intelligence
 report. Do not evaluate tactics, recommend strategy, or predict outcomes —
@@ -275,20 +270,39 @@ def _research_prompt(
     a = scn["team_a"]
     b = scn["team_b"]
     competition = scn.get("competition", "FIFA World Cup 2026")
+    knockout = bool(scn.get("knockout_round"))
+    stage = scn.get("stage", "")
+
+    if knockout:
+        fixture_line = f"Stage       : {stage}  |  {a.get('date', '2026')}"
+        points_line = ""
+        context_section = f"""─── SECTION 5 · KNOCKOUT CONTEXT ────────────────────────────────
+  This {stage} tie is single elimination: level after 90 minutes goes to
+  extra time, then penalties. Report each side's route to this match, any
+  extra-time or penalty-shootout record in this tournament, and which
+  opponent or round awaits the winner. Cite published analysis."""
+    else:
+        fixture_line = (f"Group {a.get('group', '?')}  |  Matchday {a.get('matchday', '?')}  "
+                        f"|  {a.get('date', '2026')}")
+        points_line = (f"  Group points entering this match: {a['name']}={a.get('group_points', 0)} pts  "
+                       f"{b['name']}={b.get('group_points', 0)} pts\n")
+        context_section = f"""─── SECTION 5 · GROUP STANDINGS & QUALIFICATION CONTEXT ─────────
+  Current official Group {a.get('group', '?')} standings: P W D L GF GA GD Pts for all teams.
+  What does each result scenario (win/draw/loss) mean for both sides?
+  Cite published qualification arithmetic or journalist analysis."""
 
     return f"""\
 ══════════════════════════════════════════════════════════════
 PRE-MATCH INTELLIGENCE BRIEF — {a['name'].upper()} vs {b['name'].upper()}
 Competition : {competition}
-Group {a.get('group', '?')}  |  Matchday {a.get('matchday', '?')}  |  {a.get('date', '2026')}
+{fixture_line}
 Venue city  : {a.get('host_city_this_match', 'TBC')}
 ══════════════════════════════════════════════════════════════
 
 STRENGTH SIGNALS (reference only — do not compute anything from these):
   {a['name']}: ELO {a.get('elo', '?')} · FIFA rank #{a.get('fifa_rank', '?')} · {a.get('confederation', '')}
   {b['name']}: ELO {b.get('elo', '?')} · FIFA rank #{b.get('fifa_rank', '?')} · {b.get('confederation', '')}
-  Group points entering this match: {a['name']}={a.get('group_points', 0)} pts  {b['name']}={b.get('group_points', 0)} pts
-  Tournament form so far (actual WC results): {a['name']}: {a.get('tournament_form_summary') or 'no matches played yet'} · {b['name']}: {b.get('tournament_form_summary') or 'no matches played yet'}
+{points_line}  Tournament form so far (actual WC results): {a['name']}: {a.get('tournament_form_summary') or 'no matches played yet'} · {b['name']}: {b.get('tournament_form_summary') or 'no matches played yet'}
 
 ──────────────────────────────────────────────────────────────
 COMPUTED PHYSICAL & SCHEDULING CONTEXT
@@ -339,10 +353,7 @@ For EACH team, search and report the following. Keep teams clearly separated.
   this venue? Any players singled out as carrying knocks or heavy minutes?
   Flag relevant quotes from the manager.
 
-─── SECTION 5 · GROUP STANDINGS & QUALIFICATION CONTEXT ─────────
-  Current official Group {a.get('group', '?')} standings: P W D L GF GA GD Pts for all teams.
-  What does each result scenario (win/draw/loss) mean for both sides?
-  Cite published qualification arithmetic or journalist analysis.
+{context_section}
 
 ─── SECTION 6 · MANAGER PRESS CONFERENCE & MORALE ──────────────
   Direct quotes or attributed summaries from both managers in the last
@@ -437,18 +448,18 @@ def make_researcher_node(llms: dict, settings, data_dir: str | Path | None = Non
         logger.info("")
         logger.info("━" * 60)
         logger.info(
-            "[Researcher] 🔍  %s vs %s  |  %s  |  Group %s  MD%s",
+            "[Researcher] 🔍  %s vs %s  |  %s  |  %s",
             a_scn["name"], b_scn["name"],
             scn.get("competition", "FIFA World Cup 2026"),
-            a_scn.get("group", "?"),
-            a_scn.get("matchday", "?"),
+            scn.get("stage", ""),
         )
+        pts = ("" if scn.get("knockout_round") else
+               f"  |  Group pts: {a_scn['name']}={a_scn.get('group_points', 0)}  "
+               f"{b_scn['name']}={b_scn.get('group_points', 0)}")
         logger.info(
-            "[Researcher] ELO: %s %.0f  ·  %s %.0f  |  Group pts: %s=%d  %s=%d",
+            "[Researcher] ELO: %s %.0f  ·  %s %.0f%s",
             a_scn["name"], a_scn.get("elo", 0),
-            b_scn["name"], b_scn.get("elo", 0),
-            a_scn["name"], a_scn.get("group_points", 0),
-            b_scn["name"], b_scn.get("group_points", 0),
+            b_scn["name"], b_scn.get("elo", 0), pts,
         )
 
         # ── 1. Roster seed (no API, always runs) ─────────────────────────
@@ -503,7 +514,6 @@ def make_researcher_node(llms: dict, settings, data_dir: str | Path | None = Non
                 a_fitness_block,
                 b_fitness_block,
             ),
-            max_searches=settings.max_web_searches,
         )
         logger.info("[Researcher] Search complete — structuring findings...")
 
@@ -528,8 +538,7 @@ def make_researcher_node(llms: dict, settings, data_dir: str | Path | None = Non
                 "  avg_goals_scored / avg_goals_conceded: leave null — they are "
                 "computed deterministically downstream from the parsed results.\n"
                 "  public_weaknesses: only weaknesses explicitly cited in published "
-                "reporting. No editorial additions.\n"
-                "  fitness fields   : leave at defaults — already computed separately."
+                "reporting. No editorial additions."
             ),
             user=(
                 f"Team A is {a_scn['name']}, Team B is {b_scn['name']}.\n"
@@ -582,8 +591,8 @@ def make_researcher_node(llms: dict, settings, data_dir: str | Path | None = Non
 
         # Derive recent scoring rates deterministically from the parsed results
         # (the structurer is told NOT to compute them). This feeds the Pitch
-        # Simulator real numbers, never the old 1.3/1.2 placeholder; if a team's
-        # results aren't parseable the rates stay None and are shown as absent.
+        # Simulator real numbers, never a placeholder; if a team's results
+        # aren't parseable the rates stay None and are shown as absent.
         for form in (a_form, b_form):
             form.avg_goals_scored, form.avg_goals_conceded = \
                 _avg_goals_from_results(form.recent_results)

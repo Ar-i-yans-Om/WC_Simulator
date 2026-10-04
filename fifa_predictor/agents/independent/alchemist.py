@@ -66,14 +66,14 @@ def _dedup_clusters(clusters):
 def _cohesion_from_clusters(clusters, squad_size: int = 26) -> float:
     """Soft cohesion factor. Per-extra-teammate bonus is intentionally small and
     has diminishing returns, so one large club block can't dominate the lambda.
-    Total uplift is capped well inside the schema's [0.85, 1.20] band."""
+    Total uplift is capped at +8%, so the multiplier spans [1.00, 1.08]."""
     if not clusters:
         return 1.0
     bonus = 0.0
     for c in clusters:
         n = len(getattr(c, "players", []) or [])
         if n >= 2:
-            # diminishing: 2->0.01, 3->0.017, 4->0.022, 5->0.026 ...
+            # diminishing: 2->0.01, 3->0.017, 4->0.022, 5->0.025 ...
             extra = n - 1
             bonus += 0.01 * sum(0.7 ** i for i in range(extra))
     return round(clamp(1.0 + min(bonus, 0.08), 0.85, 1.20), 4)
@@ -85,8 +85,8 @@ def make_alchemist_node(llms: dict, settings, team_key: str):
     def alchemist_node(state: dict) -> dict:
         team        = get_team(state, team_key)
         form        = team.get("form", {})
-        # squad_clubs is now a list of {player, club} entries — fold to a {name:club}
-        # map for clustering/logging (tolerates the legacy dict form too).
+        # squad_clubs is a list of {player, club} entries — fold to a {name: club}
+        # map for clustering/logging (a plain dict is accepted too).
         raw_clubs   = form.get("squad_clubs", []) or []
         if isinstance(raw_clubs, dict):
             squad_clubs = dict(raw_clubs)
@@ -128,8 +128,9 @@ def make_alchemist_node(llms: dict, settings, team_key: str):
                 user=(
                     f"This is the {name} squad. Player → current club map:\n"
                     f"{squad_clubs}\n"
-                    "Group players into club clusters. Set cohesion_multiplier "
-                    "in [0.85, 1.20] reflecting how many strong club blocks exist."
+                    "Group players who play for the same club into clusters "
+                    "(two or more players each). cohesion_multiplier is computed "
+                    "from your clusters, so leave it at its default."
                 ),
             )
             report.clusters = _dedup_clusters(report.clusters)

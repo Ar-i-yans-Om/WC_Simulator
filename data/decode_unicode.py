@@ -1,8 +1,8 @@
-"""
+r"""
 data/decode_unicode.py
 ======================
 
-Converts JSON files that contain \\uXXXX escape sequences into properly
+Converts JSON files that contain \uXXXX escape sequences into properly
 encoded UTF-8 files where names display as readable characters.
 
 Usage
@@ -18,10 +18,9 @@ Usage
 
 What it does
 ------------
-  Matej Kov\u00e1\u0159  →  Matěj Kovář
-  Tom\u00e1\u0161      →  Tomáš
-  Luka Modri\u0107  →  Luka Modrić
-  Erling H\u00e5aland → Erling Haaland (already correct)
+  Mat\u011bj Kov\u00e1\u0159  →  Matěj Kovář
+  Tom\u00e1\u0161            →  Tomáš
+  Luka Modri\u0107       →  Luka Modrić
 """
 
 from __future__ import annotations

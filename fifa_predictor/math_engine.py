@@ -36,12 +36,12 @@ DEFAULT_MAX_GOALS = 7  # grid spans 0-0 .. 7-7 (wide enough not to truncate stro
 # --- ELO anchor tuning constants (the single tuning point for the anchor) -----
 ELO_SCALE_DIVISOR = 400.0   # definitional ELO constant; do NOT treat as a knob
 # Curvature of expected-goals vs win-probability. THIS is the opinionatedness dial:
-#   k < 1  -> muted spread, total goals FALL as the ELO gap widens
+#   k < 1  -> muted spread, total goals FALL as the ELO gap widens   <-- chosen
 #   k = 1  -> total goals flat across all gaps
-#   k > 1  -> opinionated spread, total goals RISE as the gap widens   <-- chosen
+#   k > 1  -> opinionated spread, total goals RISE as the gap widens
 ELO_LAMBDA_EXPONENT = 0.75
-ELO_LAMBDA_FLOOR = 0.3      # binds for the underdog in big mismatches (>~300 ELO)
-ELO_LAMBDA_CEIL  = 3.5      # binds for the favourite only at high tournament_avg
+ELO_LAMBDA_FLOOR = 0.3      # binds for the underdog only in extreme mismatches (>~455 ELO)
+ELO_LAMBDA_CEIL  = 3.5      # binds only if tournament_avg exceeds ~2.1 goals
 
 
 def elo_base_lambda(
@@ -53,13 +53,14 @@ def elo_base_lambda(
     ELO-based expected-goals anchor.
 
     Derived from the standard ELO win-probability formula: a higher-rated team
-    is expected to score more. Equal teams -> tournament average. In live mode
-    Gemini receives this as an anchor and adjusts it from the full tactical and
-    contextual picture.
+    is expected to score more. Equal teams -> tournament average. The Pitch
+    Simulator hands this to Gemini as an anchor, which it adjusts from the full
+    tactical and contextual picture.
 
-    The curvature exponent (ELO_LAMBDA_EXPONENT) is the key tuning dial. With it
-    set above 1.0 the anchor is deliberately opinionated AND total expected goals
-    rise as the ELO gap widens (the favourite gains more than the underdog loses).
+    The curvature exponent (ELO_LAMBDA_EXPONENT) is the key tuning dial. At the
+    chosen 0.75 the anchor is deliberately conservative: the favourite gains less
+    than the underdog loses, so total expected goals dip slightly as the ELO gap
+    widens and lopsided fixtures are not over-stated before the agents weigh in.
     """
     exp_diff = 10 ** ((team_elo - opp_elo) / ELO_SCALE_DIVISOR)
     win_prob = exp_diff / (1.0 + exp_diff)
@@ -190,7 +191,7 @@ def poisson_grid(lambda_home: float, lambda_away: float,
     """
     Full scoreline probability matrix (0-0 .. max-max) under independent Poisson,
     aggregated into Win/Draw/Loss. Returns a dict shaped like schemas.PoissonReport
-    (now including the complete `grid`).
+    (including the complete `grid`).
     """
     return _aggregate(_score_matrix(lambda_home, lambda_away, max_goals), max_goals)
 
@@ -207,11 +208,11 @@ def poisson_grid(lambda_home: float, lambda_away: float,
 # multiplicatively, because a multiplier would scale wrongly for a low-lambda
 # team.
 #
-# These constants are the single tuning point for chaos behaviour.
-# These constants are the single tuning point for chaos SEVERITY. The chaos
-# *frequency* (which event, which team, how likely) now comes from each team's
-# historical chaos_profile — see build_chaos_scenarios. The split of frequency
-# is data-driven; the magnitude of each event's effect stays fixed here.
+# Frequency vs severity: the chaos *frequency* split (which event, which team)
+# comes from each team's chaos_profile in team_ratings.json — see
+# build_chaos_scenarios. CHAOS_EVENT_WEIGHTS / CHAOS_TEAM_SPLIT are only the
+# fallback when no profiles are supplied. The *severity* of each event (the
+# effect constants below) is fixed here, the single tuning point for it.
 CHAOS_EVENT_WEIGHTS: Dict[str, float] = {
     "straight_red_card": 0.45,
     "var_penalty":       0.35,
@@ -260,7 +261,7 @@ def _event_effects(event_type: str, team: str) -> dict:
 
 def _propensities(rates_a: dict, rates_b: dict) -> List[tuple]:
     """
-    Per-(event, disrupted-team) raw propensities from the two teams' histories.
+    Per-(event, disrupted-team) raw propensities from the two teams' profiles.
 
     Returns [(event_type, affected_team, raw_weight), ...]. `affected_team` is
     the DISRUPTED side: for a penalty that is the side that CONCEDES it, so a
@@ -290,8 +291,9 @@ def build_chaos_scenarios(
     """
     Enumerate the probability-weighted chaos scenarios for a single run.
 
-    Returns a list of scenario dicts whose `probability` values sum to 1.0,
-    starting with the no-chaos baseline (weight 1 - base_probability) followed
+    Returns a list of scenario dicts whose `probability` values sum to 1.0
+    (each is rounded to 6 dp; mixture_grid renormalises), starting with the
+    no-chaos baseline (weight 1 - base_probability) followed
     by one entry per (event_type x affected_team). Each scenario carries the
     multiplicative and additive adjustments to apply to the base lambdas:
 
@@ -302,15 +304,15 @@ def build_chaos_scenarios(
       * The TOTAL chaos mass is `base_probability` (the single global intensity
         knob, unchanged).
       * That mass is split across the (event x team) scenarios in proportion to
-        each team's historical chaos_profile — so an ill-disciplined side eats
+        each team's chaos_profile (heuristic per-team propensities, see
+        team_ratings.json) — so an ill-disciplined side eats
         more of the red-card mass than its opponent, a side that wins lots of
         penalties tilts the penalty mass, etc.
       * The *magnitude* of each event's effect stays fixed in the constants
         above (a red card costs the same once it happens, whoever it happens to).
 
-    If both `rates_a` and `rates_b` are omitted, falls back to the original
-    symmetric model (global CHAOS_EVENT_WEIGHTS, 50/50 team split) so dry-runs
-    and legacy callers behave exactly as before.
+    If both `rates_a` and `rates_b` are omitted, falls back to a symmetric split
+    (global CHAOS_EVENT_WEIGHTS, 50/50 between the teams).
 
     `affected_team` is the DISRUPTED side (the one a card/injury hits, or the one
     that concedes the VAR penalty).
@@ -323,14 +325,14 @@ def build_chaos_scenarios(
     }]
 
     if rates_a is None and rates_b is None:
-        # ---- legacy symmetric fallback ----
+        # ---- symmetric fallback (no profiles supplied) ----
         w_total = sum(CHAOS_EVENT_WEIGHTS.values()) or 1.0
         weighted = []
         for event_type, w in CHAOS_EVENT_WEIGHTS.items():
             for team, split in (("A", CHAOS_TEAM_SPLIT), ("B", 1.0 - CHAOS_TEAM_SPLIT)):
                 weighted.append((event_type, team, (w / w_total) * split))
     else:
-        # ---- data-driven: distribute p by historical propensity ----
+        # ---- profile-driven: distribute p by per-team propensity ----
         raw = _propensities(rates_a or {}, rates_b or {})
         raw_total = sum(r for _, _, r in raw) or 1.0
         weighted = [(et, tm, r / raw_total) for et, tm, r in raw]

@@ -48,16 +48,6 @@ def _market_prompt(team_a: str, team_b: str, competition: str) -> str:
     )
 
 
-def _match_team_names(events, team_a: str, team_b: str):
-    """DEPRECATED — superseded by server-side targeting in odds_api_fixture_odds."""
-    for ev in events or []:
-        pair = (ev.get("home_team", ""), ev.get("away_team", ""))
-        if (any(team_names_match(team_a, n) for n in pair)
-                and any(team_names_match(team_b, n) for n in pair)):
-            return ev
-    return None
-
-
 def _median(xs):
     s = sorted(xs)
     n = len(s)
@@ -144,11 +134,10 @@ def make_bookmaker_node(llms: dict, settings):
                         ],
                     }
 
-        # --- Path 2: web_search market scan -> structured ------------------
+        # --- Path 2: Gemini + Google Search market scan -> structured ------
         raw = research_llm.research(
             _BOOKMAKER_SYSTEM,
             _market_prompt(team_a, team_b, competition),
-            max_searches=max(2, settings.max_web_searches // 2),
         )
         report = structure_llm.structured(
             BookmakerReport,

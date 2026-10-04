@@ -1,31 +1,32 @@
 """
-llm.py  (google-genai edition)
-================================
+llm.py
+======
 
 Wrapper around the Google Gen AI SDK (google-genai >= 1.0).
 
-Two public methods (interface unchanged from the rest of the codebase):
+Two public methods used by every agent:
 
 1. `structured(schema, system, user, context)` -> Pydantic model instance
-   Uses response_mime_type="application/json" so the model is forced to emit
-   only JSON. The full JSON Schema is embedded in the prompt.
+   Uses response_mime_type="application/json" so the model emits only JSON.
+   The Pydantic model is passed as a native `response_schema` whenever Gemini
+   can represent it; otherwise the JSON Schema is embedded in the prompt.
 
-2. `research(system, user, max_searches)` -> str
+2. `research(system, user)` -> str
    Attaches Google Search grounding so the model pulls real current web data.
    Falls back to an ungrounded call if grounding fails OR returns empty.
 
 DIAGNOSTICS
 -----------
 Every call logs, at INFO, whether the API was hit and whether usable data came
-back; on failure the REAL error is logged (no longer swallowed).
+back; on failure the real error is logged, never swallowed.
 
 RESILIENCE: each call runs through a retry/backoff loop, a multi-key failover
 loop, AND a model-level capacity fallback. Transient server errors (5xx /
 network) back off exponentially and retry the same key; auth/quota errors (401 /
 403 / 429) fail over IMMEDIATELY to the next API key in the pool (no wasted
 backoff); capacity-overload errors (503 / "overloaded" / UNAVAILABLE) switch to
-the next MODEL in the fallback chain — a separate capacity pool — since no key or
-backoff fixes a model the server is overloaded on; fatal request errors (400 /
+the next MODEL in the fallback chain (a separate capacity pool) or, when no chain
+is configured, rotate straight to the next key; fatal request errors (400 /
 404 / 405 — bad prompt or wrong model) abort at once since no key can fix them.
 Supply several keys via GEMINI_API_KEYS (comma/space/newline separated) to spread
 free-tier quota across independent buckets, and a fallback chain via
@@ -46,7 +47,7 @@ Set FIFA_DISABLE_GROUNDING=1 to skip the grounded attempt entirely (use the
 model's own knowledge), e.g. if your key/tier can't use the googleSearch tool.
 
 The same thinking-token trap applies to prose-heavy STRUCTURED calls (e.g. the
-Judge's FinalReport, which must write four prose fields). structured() therefore
+Judge's JudgeProse, which must write four prose fields). structured() therefore
 applies its own token floor (_STRUCTURED_TOKEN_FLOOR) and warns when a parse
 succeeds but every content field comes back empty.
 """
@@ -65,7 +66,7 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
-# HTTP status codes that will never succeed on retry.
+# HTTP status codes that will never succeed when retried on the same key.
 _PERMANENT_CODES = {400, 401, 403, 404, 405}
 _PREVIEW = 600  # chars of fetched data to echo into the log at INFO
 _RESEARCH_TOKEN_FLOOR = 8192    # reasoning models need headroom for thinking+answer
@@ -292,7 +293,6 @@ class LLM:
         api_keys: Optional[list] = None,
         fallback_models: Optional[list] = None,
     ):
-        self.model = model
         self.max_tokens = max_tokens
         self.max_retries = max_retries
         self.strict = strict
@@ -319,18 +319,12 @@ class LLM:
             k = (k or "").strip()
             if k and k not in pool:
                 pool.append(k)
-        self.api_keys = pool
 
         # One SDK client per key. `_key_idx` round-robins across calls so load is
         # spread, and advances on failover within a call.
         self._clients: list = []
         self._key_labels: list = []
         self._key_idx = 0
-
-        # Lightweight call counters so you can see the hit/success ratio.
-        self.attempts = 0
-        self.successes = 0
-        self.failures = 0
 
         if pool:
             from google import genai
@@ -392,7 +386,6 @@ class LLM:
                 rotate_after = False
 
                 for attempt in range(1, self.max_retries + 1):
-                    self.attempts += 1
                     try:
                         response = client.models.generate_content(
                             model=model, contents=contents, config=config,
@@ -503,7 +496,7 @@ class LLM:
         # Reasoning models spend output tokens on internal thinking; a small cap
         # can leave the visible JSON empty (the trap research() guards against).
         # Apply a structured-output floor so prose-heavy schemas (e.g.
-        # FinalReport) have room for thinking + answer.
+        # JudgeProse) have room for thinking + answer.
         tokens = max(self.max_tokens, _STRUCTURED_TOKEN_FLOOR)
 
         def _attempt():
@@ -554,14 +547,12 @@ class LLM:
                     record_quality(what, "vacuous",
                                    "all content fields empty after re-rolls")
 
-            self.successes += 1
             logger.info("%s ✓ %s OK | %d chars", self.tag, what, char_len)
             logger.info("%s   data: %s", self.tag,
                         json.dumps(dumped, default=str)[:_PREVIEW])
             return obj
 
         except Exception as exc:  # noqa: BLE001
-            self.failures += 1
             logger.error("%s ✗ %s FAILED: %s: %s", self.tag, what,
                          type(exc).__name__, str(exc)[:300])
             if self.strict:
@@ -574,7 +565,7 @@ class LLM:
     # ------------------------------------------------------------------ #
     # Web research via Google Search grounding (robust fallback chain)    #
     # ------------------------------------------------------------------ #
-    def research(self, system: str, user: str, max_searches: int = 6) -> str:
+    def research(self, system: str, user: str) -> str:
         from google.genai import types
 
         # Reasoning models spend output tokens on thinking; give headroom so the
@@ -582,7 +573,6 @@ class LLM:
         tokens = max(self.max_tokens, _RESEARCH_TOKEN_FLOOR)
 
         def _log_ok(what: str, text: str) -> str:
-            self.successes += 1
             logger.info("%s ✓ %s OK | %d chars retrieved", self.tag, what, len(text))
             logger.info("%s   fetched: %s", self.tag, text[:_PREVIEW].replace("\n", " "))
             return text
@@ -669,40 +659,15 @@ class LLM:
             if text:
                 record_quality("research", grounding_issue, "no live web grounding")
                 return _log_ok(what, text)
-            self.failures += 1
             logger.error("%s ✗ %s also returned EMPTY (%s).",
                          self.tag, what, _describe_response(response))
             return ""
         except Exception as exc:  # noqa: BLE001
-            self.failures += 1
             logger.error("%s ✗ %s FAILED: %s: %s", self.tag, what,
                          type(exc).__name__, str(exc)[:300])
             if self.strict:
                 raise
             return f"[Research unavailable: {type(exc).__name__}: {exc}]"
-
-    # ------------------------------------------------------------------ #
-    # Health check — confirm the key + model actually work before a run   #
-    # ------------------------------------------------------------------ #
-    def ping(self) -> bool:
-        """Fire one trivial call; log and return whether the API is reachable."""
-        from google.genai import types
-        logger.info("%s → ping …", self.tag)
-        try:
-            resp = self._generate(
-                contents="Reply with the single word: OK",
-                config=types.GenerateContentConfig(max_output_tokens=2048),
-                what="ping",
-            )
-            txt = (_extract_text(resp) or "").strip()
-            ok = bool(txt)
-            logger.info("%s ✓ ping reachable, replied %r", self.tag, txt[:40]) if ok \
-                else logger.error("%s ✗ ping reachable but empty reply.", self.tag)
-            return ok
-        except Exception as exc:  # noqa: BLE001
-            logger.error("%s ✗ ping FAILED: %s: %s", self.tag,
-                         type(exc).__name__, str(exc)[:300])
-            return False
 
 
 def build_llms(settings) -> dict:

@@ -2,8 +2,8 @@
 fifa_predictor
 ==============
 
-A high-fidelity, multi-agent FIFA World Cup match prediction system built on
-LangGraph and the Anthropic API.
+A multi-agent FIFA World Cup 2026 match-prediction system built on LangGraph
+and Google Gemini (the google-genai SDK, with Google Search grounding).
 
 Design philosophy
 -----------------
@@ -21,19 +21,18 @@ The architecture therefore enforces a hard separation between:
     Alchemist, Strategist, Scout, Tactician.
   Team A instances have ZERO visibility into Team B's internal state.
 
-The numeric core is never mocked: base lambda, the Physiologist fitness factor
-and the Poisson scoreline grid are always computed deterministically from real
-inputs. The Anthropic API (with the server-side web_search tool) provides the
-qualitative/research layer on top of that numeric core.
+The numeric core is never mocked: the ELO anchor, the Physiologist fitness
+factor and the Poisson scoreline mixture are always computed deterministically
+from real inputs. Gemini (with Google Search grounding for research) provides
+the qualitative layer on top of that numeric core.
 """
 
 from .graph import build_graph, run_prediction
-from .config import Settings, load_settings, default_portugal_france_scenario
+from .config import Settings, demo_scenario
 
 __all__ = [
     "build_graph",
     "run_prediction",
     "Settings",
-    "load_settings",
-    "default_portugal_france_scenario",
+    "demo_scenario",
 ]

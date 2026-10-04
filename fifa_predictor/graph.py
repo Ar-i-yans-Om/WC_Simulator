@@ -32,7 +32,7 @@ Topology
 Team A's branch has zero edges to Team B's branch: isolation is structural, not
 just convention. The two 4-node chains are balanced, so `tactician_A` and
 `tactician_B` always complete in the same LangGraph superstep - which makes the
-fan-in at `pitch_simulator` fire exactly once. Chaos is no longer a branch: the
+fan-in at `pitch_simulator` fire exactly once. Chaos is not a branch: the
 Chaos Agent always runs and the Judge folds every scenario into one run.
 """
 
@@ -53,7 +53,7 @@ from .agents.independent.alchemist import make_alchemist_node
 from .agents.independent.scout import make_scout_node
 from .agents.independent.strategist import make_strategist_node
 from .agents.independent.tactician import make_tactician_node
-from .config import MatchScenario, Settings, default_portugal_france_scenario
+from .config import MatchScenario, Settings, demo_scenario
 from .llm import build_llms
 from .schemas import AgentState
 
@@ -164,7 +164,7 @@ def run_prediction(
     from .llm import reset_run_quality, run_quality_summary
 
     settings = settings or Settings.from_env()
-    scenario = scenario or default_portugal_france_scenario()
+    scenario = scenario or demo_scenario()
     # Only require a live API key when we are building the real LLM clients.
     # Injected `llms` (e.g. a test stub) bypass the key requirement.
     if llms is None:

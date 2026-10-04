@@ -69,7 +69,7 @@ def make_scout_node(llms: dict, settings, team_key: str):
                 f"[Scout-{team_key}] {my_name} on {opp_name}: "
                 f"{len(report.opponent_weaknesses)} weakness(es): "
                 + (", ".join(report.opponent_weaknesses[:3]) if report.opponent_weaknesses else "none")
-                + f" | vectors: "
+                + " | vectors: "
                 + (", ".join(report.exploit_vectors[:2]) if report.exploit_vectors else "none")
             ],
         }

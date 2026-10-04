@@ -2,9 +2,9 @@
 main.py
 =======
 
-Command-line entry point. Runs the reference Matchday-3 fixture
-(Portugal vs France) end-to-end and prints the executive report plus the full
-agent trace.
+Command-line demo. Runs fixture K5 (Portugal vs Colombia, Group K, Matchday 3)
+end-to-end and prints the executive report plus the full agent trace. For any
+other fixture, use match_runner.py.
 
 Usage
 -----
@@ -23,7 +23,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from .config import Settings, default_portugal_france_scenario
+from .config import Settings, demo_scenario
 from .graph import export_mermaid, run_prediction
 from .logger import setup as setup_logging
 
@@ -128,7 +128,7 @@ def main(argv=None) -> int:
     setup_logging()
     settings = build_settings(args)
 
-    scenario = default_portugal_france_scenario()
+    scenario = demo_scenario()
     a, b = scenario.team_a.name, scenario.team_b.name
 
     print(_rule(f"{a} vs {b}  |  {scenario.stage}"))

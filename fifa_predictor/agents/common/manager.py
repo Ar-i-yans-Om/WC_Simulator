@@ -2,12 +2,11 @@
 agents/common/manager.py
 =========================
 
-Manager (Orchestrator). In this design the heavy routing is expressed
-declaratively in the graph topology (graph.py) and in the Chaos conditional
-edge; the Manager node itself is the single entry point that validates the
-frozen config payload and seeds the trace. Keeping routing in the graph (rather
-than a giant supervisor switch) makes the independent team branches and the
-chaos fallback edge visible in the compiled diagram.
+Manager (Orchestrator). Routing is expressed declaratively in the graph
+topology (graph.py); the Manager node itself is the single entry point that
+reads the frozen config payload and seeds the trace. Keeping routing in the
+graph (rather than a giant supervisor switch) makes the independent team
+branches and the fan-in visible in the compiled diagram.
 """
 
 from __future__ import annotations
