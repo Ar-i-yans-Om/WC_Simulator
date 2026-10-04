@@ -158,7 +158,7 @@ Everything the runner needs is in `data/`:
 |---|---|
 | `fixtures.json` | The 104-match schedule (id, group or round, date, venue, city). Knockout ties (`M73`–`M104`) carry a `round`, a `match_no` and slot references instead of team names. |
 | `team_ratings.json` | Per team: ELO (worldfootballrankings.com, 17 Jun 2026), FIFA rank (11 Jun 2026), confederation and `chaos_profile`, plus the optional `dark_horses` map. Chaos profiles are heuristic (a confederation baseline plus documented team tweaks), not per-match statistics. |
-| `results.json` | Played scores: `{id, home_score, away_score, played}`. A knockout tie level after extra time adds `"winner": "<team>"` (the shootout winner). |
+| `results.json` | Played scores: `{id, home_score, away_score, played}`. A knockout tie that went to extra time adds `"aet": true`; one decided on penalties also adds `"winner": "<team>"` and `"penalties": "<home>-<away>"`. |
 | `players.json` | Registered 26-man squads for all 48 teams (number, position, date of birth, club, caps, goals). The Researcher uses it as the roster reference and as the Alchemist's club map. |
 | `predictions.json` | Output, keyed by fixture id (see below). |
 

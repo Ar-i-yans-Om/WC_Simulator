@@ -1,5 +1,5 @@
 {
-  "_instructions": "Fill in home_score and away_score as each match is played. Set played=true when the score is final. match_runner.py reads this file to compute group standings and to advance the knockout bracket. KNOCKOUTS: ids M73-M104 (see fixtures.json). Enter the score after normal/extra time; if it finished level and was decided on penalties, add \"winner\":\"<team name>\" so the bracket knows who advances (e.g. \"winner\":\"Germany\").",
+  "_instructions": "Fill in home_score and away_score as each match is played. Set played=true when the score is final. match_runner.py reads this file to compute group standings and to advance the knockout bracket. KNOCKOUTS: ids M73-M104 (see fixtures.json). Enter the score after normal/extra time. If a tie went to extra time add \"aet\": true; if it was decided on penalties also add \"winner\": \"<team name>\" and \"penalties\": \"<home>-<away>\" (e.g. \"penalties\": \"3-4\").",
   "results": [
     {
       "id": "A1",
@@ -433,42 +433,214 @@
       "away_score": 1,
       "played": true
     },
-
-    {"id": "M73", "home_score": 0, "away_score": 1, "played": true},
-    {"id": "M74", "home_score": 1, "away_score": 1, "played": true, "winner": "Paraguay"},
-    {"id": "M75", "home_score": 1, "away_score": 1, "played": true, "winner": "Morocco"},
-    {"id": "M76", "home_score": 2, "away_score": 1, "played": true},
-    {"id": "M77", "home_score": 3, "away_score": 0, "played": true},
-    {"id": "M78", "home_score": 1, "away_score": 2, "played": true},
-    {"id": "M79", "home_score": 2, "away_score": 0, "played": true},
-    {"id": "M80", "home_score": 2, "away_score": 1, "played": true},
-    {"id": "M81", "home_score": 2, "away_score": 0, "played": true},
-    {"id": "M82", "home_score": 3, "away_score": 2, "played": true},
-    {"id": "M83", "home_score": 2, "away_score": 1, "played": true},
-    {"id": "M84", "home_score": 3, "away_score": 0, "played": true},
-    {"id": "M85", "home_score": 2, "away_score": 0, "played": true},
-    {"id": "M86", "home_score": 3, "away_score": 2, "played": true},
-    {"id": "M87", "home_score": 1, "away_score": 0, "played": true},
-    {"id": "M88", "home_score": 1, "away_score": 1, "played": true, "winner": "Egypt"},
-    
-    {"id": "M89", "home_score": 0, "away_score": 1, "played": true},
-    {"id": "M90", "home_score": 0, "away_score": 3, "played": true},
-    {"id": "M91", "home_score": 1, "away_score": 2, "played": true},
-    {"id": "M92", "home_score": 2, "away_score": 3, "played": true},
-    {"id": "M93", "home_score": 0, "away_score": 1, "played": true},
-    {"id": "M94", "home_score": 1, "away_score": 4, "played": true},
-    {"id": "M95", "home_score": 3, "away_score": 2, "played": true},
-    {"id": "M96", "home_score": 0, "away_score": 0, "played": true, "winner": "Switzerland"},
-
-    {"id": "M97", "home_score": 2, "away_score": 0, "played": true},
-    {"id": "M98", "home_score": 2, "away_score": 1, "played": true},
-    {"id": "M99", "home_score": 1, "away_score": 2, "played": true},
-    {"id": "M100", "home_score": 3, "away_score": 1, "played": true},
-    
-    {"id": "M101", "home_score": 0, "away_score": 2, "played": true},
-    {"id": "M102", "home_score": 1, "away_score": 2, "played": true},
-    
-    {"id": "M103", "home_score": 4, "away_score": 6, "played": true},
-    {"id": "M104", "home_score": 1, "away_score": 0, "played": true}
+    {
+      "id": "M73",
+      "home_score": 0,
+      "away_score": 1,
+      "played": true
+    },
+    {
+      "id": "M74",
+      "home_score": 1,
+      "away_score": 1,
+      "played": true,
+      "winner": "Paraguay",
+      "aet": true,
+      "penalties": "3-4"
+    },
+    {
+      "id": "M75",
+      "home_score": 1,
+      "away_score": 1,
+      "played": true,
+      "winner": "Morocco",
+      "aet": true,
+      "penalties": "2-3"
+    },
+    {
+      "id": "M76",
+      "home_score": 2,
+      "away_score": 1,
+      "played": true
+    },
+    {
+      "id": "M77",
+      "home_score": 3,
+      "away_score": 0,
+      "played": true
+    },
+    {
+      "id": "M78",
+      "home_score": 1,
+      "away_score": 2,
+      "played": true
+    },
+    {
+      "id": "M79",
+      "home_score": 2,
+      "away_score": 0,
+      "played": true
+    },
+    {
+      "id": "M80",
+      "home_score": 2,
+      "away_score": 1,
+      "played": true
+    },
+    {
+      "id": "M81",
+      "home_score": 2,
+      "away_score": 0,
+      "played": true
+    },
+    {
+      "id": "M82",
+      "home_score": 3,
+      "away_score": 2,
+      "played": true,
+      "aet": true
+    },
+    {
+      "id": "M83",
+      "home_score": 2,
+      "away_score": 1,
+      "played": true
+    },
+    {
+      "id": "M84",
+      "home_score": 3,
+      "away_score": 0,
+      "played": true
+    },
+    {
+      "id": "M85",
+      "home_score": 2,
+      "away_score": 0,
+      "played": true
+    },
+    {
+      "id": "M86",
+      "home_score": 3,
+      "away_score": 2,
+      "played": true,
+      "aet": true
+    },
+    {
+      "id": "M87",
+      "home_score": 1,
+      "away_score": 0,
+      "played": true
+    },
+    {
+      "id": "M88",
+      "home_score": 1,
+      "away_score": 1,
+      "played": true,
+      "winner": "Egypt",
+      "aet": true,
+      "penalties": "2-4"
+    },
+    {
+      "id": "M89",
+      "home_score": 0,
+      "away_score": 1,
+      "played": true
+    },
+    {
+      "id": "M90",
+      "home_score": 0,
+      "away_score": 3,
+      "played": true
+    },
+    {
+      "id": "M91",
+      "home_score": 1,
+      "away_score": 2,
+      "played": true
+    },
+    {
+      "id": "M92",
+      "home_score": 2,
+      "away_score": 3,
+      "played": true
+    },
+    {
+      "id": "M93",
+      "home_score": 0,
+      "away_score": 1,
+      "played": true
+    },
+    {
+      "id": "M94",
+      "home_score": 1,
+      "away_score": 4,
+      "played": true
+    },
+    {
+      "id": "M95",
+      "home_score": 3,
+      "away_score": 2,
+      "played": true
+    },
+    {
+      "id": "M96",
+      "home_score": 0,
+      "away_score": 0,
+      "played": true,
+      "winner": "Switzerland",
+      "aet": true,
+      "penalties": "4-3"
+    },
+    {
+      "id": "M97",
+      "home_score": 2,
+      "away_score": 0,
+      "played": true
+    },
+    {
+      "id": "M98",
+      "home_score": 2,
+      "away_score": 1,
+      "played": true
+    },
+    {
+      "id": "M99",
+      "home_score": 1,
+      "away_score": 2,
+      "played": true,
+      "aet": true
+    },
+    {
+      "id": "M100",
+      "home_score": 3,
+      "away_score": 1,
+      "played": true,
+      "aet": true
+    },
+    {
+      "id": "M101",
+      "home_score": 0,
+      "away_score": 2,
+      "played": true
+    },
+    {
+      "id": "M102",
+      "home_score": 1,
+      "away_score": 2,
+      "played": true
+    },
+    {
+      "id": "M103",
+      "home_score": 4,
+      "away_score": 6,
+      "played": true
+    },
+    {
+      "id": "M104",
+      "home_score": 1,
+      "away_score": 0,
+      "played": true,
+      "aet": true
+    }
   ]
 }
